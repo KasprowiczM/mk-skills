@@ -9,8 +9,8 @@ Antigravity and Cursor. One repository, one installer.
 
 | Skill | What it does | Status |
 |---|---|---|
-| [`mk-orkiestra`](skills/mk-orkiestra/SKILL.md) | Orchestrator mode: the session's model is the "boss" that plans and delegates work down a ladder of cheaper subagent models, then spot-checks the results. The goal: the same quality at a lower cost. | 0.1.0 |
-| [`mk-ustrukturyzuj-prompt`](skills/mk-ustrukturyzuj-prompt/SKILL.md) | Turns rambling or dictated text into one short, well-structured prompt to review before sending. Also a macOS Quick Action and a shell script. | 0.1.0 |
+| [`mk-orkiestra`](skills/mk-orkiestra/SKILL.md) | Orchestrator mode: the session's model is the "boss" that plans and delegates work down a ladder of cheaper subagent models, then spot-checks the results. It can also consult a stronger model upward (advisor or expert) at defined points. The goal: the same quality at a lower cost. | 0.2.0 |
+| [`mk-ustrukturyzuj-prompt`](skills/mk-ustrukturyzuj-prompt/SKILL.md) | Turns rambling or dictated text into one short, well-structured prompt to review before sending. Also a macOS Quick Action and a shell script. Adds a Working mode section and picks fitting skills from your installed skills. | 0.2.0 |
 
 Adding a skill later is one new folder under `skills/` plus one row above.
 
@@ -25,8 +25,8 @@ Adding a skill later is one new folder under `skills/` plus one row above.
   Quick Action need the Claude Code CLI installed and signed in (macOS for the
   Quick Action).
 - `mk-orkiestra` needs a harness that can start subagents; without them it
-  works alone. It acts only when you ask for it explicitly. Delegation is tested
-  in Claude Code and Codex, untested in Cursor and Antigravity.
+  works alone. It acts only when you ask for it explicitly. Test status per
+  harness is in the table below.
 
 ## Install
 
@@ -45,12 +45,16 @@ did and records it in `~/.mk-skills/manifest`. Start a new session afterwards.
 
 ### Where skills go, and how to invoke them
 
-| Harness | User-level skill folder | Source | Invoke | `mk-orkiestra` delegation |
-|---|---|---|---|---|
-| Claude Code | `~/.claude/skills` | verified ([docs](https://code.claude.com/docs/en/skills)) | `/mk-orkiestra`, or automatically by description | tested |
-| Codex | `~/.agents/skills` | verified ([docs](https://learn.chatgpt.com/docs/build-skills)) | `$mk-orkiestra` or `/skills` (CLI/IDE), `@` in ChatGPT, or automatically | tested |
-| Antigravity | `~/.gemini/config/skills` | verified ([docs](https://antigravity.google/docs/skills)) | `/mk-orkiestra` (App and CLI), naming it in a message, or automatically | untested |
-| Cursor | `~/.cursor/skills` | verified ([docs](https://cursor.com/docs/skills)) | type `/` in Agent chat and pick it, or automatically | untested |
+| Harness | User-level skill folder | Source | Invoke | `mk-orkiestra`: delegation down | `mk-orkiestra`: consultation up |
+|---|---|---|---|---|---|
+| Claude Code | `~/.claude/skills` | verified ([docs](https://code.claude.com/docs/en/skills)) | `/mk-orkiestra`, or automatically by description | tested | tested (advisor tool and `Agent` with a stronger model; Fable advisor and desktop Code tab untested) |
+| Codex | `~/.agents/skills` | verified ([docs](https://learn.chatgpt.com/docs/build-skills)) | `$mk-orkiestra` or `/skills` (CLI/IDE), `@` in ChatGPT, or automatically | tested | partly tested (`codex exec` fallback confirmed; the model of a `spawn_agent` call is unproven) |
+| Antigravity | `~/.gemini/config/skills` | verified ([docs](https://antigravity.google/docs/skills)) | `/mk-orkiestra` (App and CLI), naming it in a message, or automatically | tested for the flash helper (CLI) | partly tested (one-shot `agy --model ...` confirmed; the `pro` helper was not a stronger model on the tested account) |
+| Cursor | `~/.cursor/skills` | verified ([docs](https://cursor.com/docs/skills)) | type `/` in Agent chat and pick it, or automatically | untested | partly tested (Task `model` accepted in `cursor-agent`; helper by name refused there; IDE untested) |
+
+Test results are from 2026-11-19 (Claude Code 2.1.328, codex-cli 0.170.0, agy
+1.5.12, cursor-agent 2026.11.19) and are recorded in `ladders.toml` and the
+harness guides under `skills/mk-orkiestra/harness/`.
 
 Paths were checked against the official documentation on 2026-11-19. Docs change;
 if a path stops working, open an issue. Notes:
@@ -75,8 +79,26 @@ if a path stops working, open an issue. Notes:
 
 On first use the skill reads `ladders.toml`, finds your model's rung and
 delegates only to cheaper rungs. The ladders are examples: check them against
-your own model list and edit them (section 9 of
+your own model list and edit them (section 11 of
 [`SKILL.md`](skills/mk-orkiestra/SKILL.md)).
+
+#### Consulting a stronger model (upward)
+
+Work only goes down the ladder; questions may go up. At defined points the boss
+asks the next model above it for one **advisor** answer (a few hundred words,
+no tools) or one read-only **expert** review (at most 40 lines), keeps the
+task and checks the result like any other work. The triggers: before a
+production write or irreversible step; a migration, data or security plan; the
+same failure after two own attempts; an expensive-to-reverse design choice; a
+subagent that failed its one correction; one critique of a finished multi-stage
+task. Budget: three upward calls per stage, one expert. A top rung marked
+`consent = true` in `ladders.toml` needs your yes before its first call. Say
+"doradca", "advisor" or "consult a stronger model" to ask for it explicitly.
+
+In Claude Code you can enable the built-in advisor: `/advisor opus`, the
+setting `advisorModel`, or `claude --advisor opus`. Without it the skill uses
+the `Agent` tool with the next model up, so it works either way. Other
+harnesses use the mechanisms in `ladders.toml` (`[<harness>.up]`).
 
 ### mk-ustrukturyzuj-prompt
 
@@ -84,6 +106,16 @@ Needs nothing in chat. The script and the Quick Action need the Claude Code CLI
 (`claude`) installed and signed in; set `PROMPT_MASTER_MODEL` to change the model
 (default `sonnet`; for the Quick Action use `--model`). On any problem (missing
 CLI, error, timeout, empty answer) the script returns your text unchanged.
+
+Working mode and skill selection: when the agent can see which skills are
+installed (or the script finds them, see below), the prompt can name fitting
+skills under "Tools and resources", list up to four specialists under "Role",
+and for a task with several stages add a "Working mode" section, for example
+telling the agent to work in `mk-orkiestra` orchestrator mode. The script builds
+the list from `PROMPT_MASTER_SKILLS_DIR` or, by default, the skills folder this
+skill is installed in (at most 60 skills, 160 characters each). Known limit:
+without a skills list the Working mode section is occasionally left out; you
+review the prompt before sending anyway.
 
 Before (a dictated draft):
 
@@ -109,6 +141,15 @@ Write a Python script that:
 
 ## Open questions
 - Do all files share the same columns?
+```
+
+For a multi-stage draft ("research three libraries, then build the importer, then
+check it") with `mk-orkiestra` installed, the result also gets a section such as:
+
+```
+## Working mode
+The task has three stages. Work in `mk-orkiestra` orchestrator mode: delegate
+research, implementation and verification to separate subagents.
 ```
 
 Three ways to use it:

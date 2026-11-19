@@ -9,8 +9,8 @@ Antigravity i Cursor. Jedno repozytorium, jeden instalator.
 
 | Skill | Co robi | Status |
 |---|---|---|
-| [`mk-orkiestra`](skills/mk-orkiestra/SKILL.md) | Tryb orkiestry: model sesji jest „szefem”, który planuje i zleca pracę tańszym modelom subagentów (drabinka modeli), a potem wyrywkowo sprawdza wyniki. Cel: ta sama jakość przy niższym koszcie. | 0.1.0 |
-| [`mk-ustrukturyzuj-prompt`](skills/mk-ustrukturyzuj-prompt/SKILL.md) | Zamienia chaotyczny lub podyktowany tekst w jeden krótki, uporządkowany prompt do przejrzenia przed wysłaniem. Także Quick Action w macOS i skrypt powłoki. | 0.1.0 |
+| [`mk-orkiestra`](skills/mk-orkiestra/SKILL.md) | Tryb orkiestry: model sesji jest „szefem”, który planuje i zleca pracę tańszym modelom subagentów (drabinka modeli), a potem wyrywkowo sprawdza wyniki. Może też w określonych momentach zapytać mocniejszy model (doradca lub ekspert). Cel: ta sama jakość przy niższym koszcie. | 0.2.0 |
+| [`mk-ustrukturyzuj-prompt`](skills/mk-ustrukturyzuj-prompt/SKILL.md) | Zamienia chaotyczny lub podyktowany tekst w jeden krótki, uporządkowany prompt do przejrzenia przed wysłaniem. Także Quick Action w macOS i skrypt powłoki. Dodaje sekcję „Tryb pracy” i dobiera pasujące skille z zainstalowanych. | 0.2.0 |
 
 Dodanie skilla to jeden nowy folder w `skills/` i jeden wiersz w tabeli.
 
@@ -25,8 +25,8 @@ Dodanie skilla to jeden nowy folder w `skills/` i jeden wiersz w tabeli.
   i Quick Action wymagają zainstalowanego i zalogowanego Claude Code CLI
   (Quick Action: macOS).
 - `mk-orkiestra` wymaga agenta, który umie uruchamiać subagentów; bez nich
-  pracuje sam. Działa tylko na wyraźną prośbę. Delegowanie jest przetestowane w
-  Claude Code i Codex, nieprzetestowane w Cursorze i Antigravity.
+  pracuje sam. Działa tylko na wyraźną prośbę. Stan testów
+  dla każdego agenta jest w tabeli poniżej.
 
 ## Instalacja
 
@@ -46,12 +46,16 @@ Po instalacji uruchom nową sesję.
 
 ### Gdzie trafiają skille i jak je wywołać
 
-| Agent | Folder skilli użytkownika | Źródło | Wywołanie | Delegowanie `mk-orkiestra` |
-|---|---|---|---|---|
-| Claude Code | `~/.claude/skills` | potwierdzone ([docs](https://code.claude.com/docs/en/skills)) | `/mk-orkiestra` lub automatycznie po opisie | przetestowane |
-| Codex | `~/.agents/skills` | potwierdzone ([docs](https://learn.chatgpt.com/docs/build-skills)) | `$mk-orkiestra` lub `/skills` (CLI/IDE), `@` w ChatGPT, albo automatycznie | przetestowane |
-| Antigravity | `~/.gemini/config/skills` | potwierdzone ([docs](https://antigravity.google/docs/skills)) | `/mk-orkiestra` (aplikacja i CLI), nazwa w wiadomości lub automatycznie | nieprzetestowane |
-| Cursor | `~/.cursor/skills` | potwierdzone ([docs](https://cursor.com/docs/skills)) | wpisz `/` w czacie Agenta i wybierz, albo automatycznie | nieprzetestowane |
+| Agent | Folder skilli użytkownika | Źródło | Wywołanie | `mk-orkiestra`: delegowanie w dół | `mk-orkiestra`: konsultacja w górę |
+|---|---|---|---|---|---|
+| Claude Code | `~/.claude/skills` | potwierdzone ([docs](https://code.claude.com/docs/en/skills)) | `/mk-orkiestra` lub automatycznie po opisie | przetestowane | przetestowane (narzędzie advisor i `Agent` z mocniejszym modelem; doradca Fable i zakładka Code w aplikacji nieprzetestowane) |
+| Codex | `~/.agents/skills` | potwierdzone ([docs](https://learn.chatgpt.com/docs/build-skills)) | `$mk-orkiestra` lub `/skills` (CLI/IDE), `@` w ChatGPT, albo automatycznie | przetestowane | częściowo (zapasowe `codex exec` potwierdzone; model wywołania `spawn_agent` nieudowodniony) |
+| Antigravity | `~/.gemini/config/skills` | potwierdzone ([docs](https://antigravity.google/docs/skills)) | `/mk-orkiestra` (aplikacja i CLI), nazwa w wiadomości lub automatycznie | przetestowane dla pomocnika flash (CLI) | częściowo (jednorazowe `agy --model ...` potwierdzone; pomocnik `pro` nie był mocniejszym modelem na testowanym koncie) |
+| Cursor | `~/.cursor/skills` | potwierdzone ([docs](https://cursor.com/docs/skills)) | wpisz `/` w czacie Agenta i wybierz, albo automatycznie | nieprzetestowane | częściowo (`model` w Task przyjęty w `cursor-agent`; pomocnik po nazwie tam odrzucony; IDE nieprzetestowane) |
+
+Wyniki testów z 2026-11-19 (Claude Code 2.1.328, codex-cli 0.170.0, agy 1.5.12,
+cursor-agent 2026.11.19) są zapisane w `ladders.toml` i w przewodnikach w
+`skills/mk-orkiestra/harness/` (po angielsku).
 
 Ścieżki sprawdzono w oficjalnej dokumentacji 2026-11-19. Dokumentacja się
 zmienia; jeśli ścieżka przestanie działać, zgłoś issue. Uwagi:
@@ -77,8 +81,27 @@ zmienia; jeśli ścieżka przestanie działać, zgłoś issue. Uwagi:
 
 Przy pierwszym użyciu skill czyta `ladders.toml`, znajduje szczebel Twojego
 modelu i deleguje tylko do tańszych szczebli. Drabinki są przykładowe:
-sprawdź je względem własnej listy modeli i edytuj (sekcja 9 w
+sprawdź je względem własnej listy modeli i edytuj (sekcja 11 w
 [`SKILL.md`](skills/mk-orkiestra/SKILL.md), po angielsku).
+
+#### Konsultacja z mocniejszym modelem (w górę)
+
+Praca idzie tylko w dół drabinki; pytania mogą iść w górę. W określonych
+momentach szef pyta najbliższy model nad sobą: o jedną odpowiedź **doradcy**
+(kilkaset słów, bez narzędzi) albo o jeden **ekspercki** przegląd tylko do
+odczytu (do 40 linii), zachowuje zadanie i sprawdza wynik jak każdą pracę.
+Momenty: przed zapisem na produkcji lub krokiem nie do cofnięcia; plan
+migracji, danych lub bezpieczeństwa; ta sama usterka po dwóch własnych próbach;
+kosztowna do odwrócenia decyzja projektowa; subagent, który nie przeszedł
+jedynej poprawki; jedna krytyka całości po wieloetapowym zadaniu. Budżet: trzy
+wywołania w górę na etap, w tym jeden ekspert. Szczebel z `consent = true` w
+`ladders.toml` wymaga Twojej zgody przed pierwszym wywołaniem. Powiedz „doradca”,
+"advisor" albo „zapytaj mocniejszy model”, żeby poprosić o to wprost.
+
+W Claude Code możesz włączyć wbudowanego doradcę: `/advisor opus`, ustawienie
+`advisorModel` albo `claude --advisor opus`. Bez niego skill używa narzędzia
+`Agent` z następnym modelem w górę, więc działa tak i tak. Inni agenci używają
+mechanizmów z `ladders.toml` (`[<agent>.up]`).
 
 ### mk-ustrukturyzuj-prompt
 
@@ -87,6 +110,16 @@ zalogowanego Claude Code CLI (`claude`); model zmienisz zmienną
 `PROMPT_MASTER_MODEL` (domyślnie `sonnet`; dla Quick Action użyj `--model`). Przy każdym problemie
 (brak CLI, błąd, przekroczony czas, pusta odpowiedź) skrypt zwraca Twój tekst
 bez zmian.
+
+Tryb pracy i dobór skilli: gdy agent widzi zainstalowane skille (albo skrypt je
+znajdzie, patrz niżej), prompt może wskazać pasujące skille w „Narzędzia i
+zasoby”, wymienić do czterech specjalistów w „Rola”, a przy zadaniu
+wieloetapowym dodać sekcję „Tryb pracy”, np. z poleceniem pracy w trybie
+orkiestry `mk-orkiestra`. Skrypt buduje listę ze zmiennej
+`PROMPT_MASTER_SKILLS_DIR` albo domyślnie z folderu skilli, w którym jest
+zainstalowany ten skill (do 60 skilli, po 160 znaków). Znane ograniczenie: bez
+listy skilli sekcja „Tryb pracy” bywa pominięta; prompt i tak przeglądasz przed
+wysłaniem.
 
 Przed (podyktowany szkic):
 
@@ -112,6 +145,15 @@ Napisz skrypt w Pythonie, który:
 
 ## Do doprecyzowania
 - Czy wszystkie pliki mają te same kolumny?
+```
+
+Dla szkicu wieloetapowego („zbadaj trzy biblioteki, potem zbuduj import, potem
+sprawdź”) przy zainstalowanym `mk-orkiestra` wynik dostaje też sekcję w rodzaju:
+
+```
+## Tryb pracy
+Zadanie ma trzy etapy. Pracuj w trybie orkiestry `mk-orkiestra`: zleć badanie,
+implementację i weryfikację osobnym subagentom.
 ```
 
 Trzy sposoby użycia:

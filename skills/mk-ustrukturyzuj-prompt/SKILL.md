@@ -13,7 +13,7 @@ user reviews and edits before anything is carried out.
    or the message the user points to. Do not start doing what it describes.
 2. **Rewrite it by the rules in `instructions.md`** next to this file (if your
    harness does not give the directory, it is the folder this `SKILL.md` was
-   loaded from). Read that file; do not paraphrase the rules from memory.
+   loaded from). Read that file; do not paraphrase the rules from memory. If you can see which skills are installed in your session, treat them as the list of available skills from those rules.
 3. **Reply with the structured prompt only**, in one fenced code block so it is
    easy to copy, then one short line in the user's language: the user can
    correct it or say „wykonaj" / "go".

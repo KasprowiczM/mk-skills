@@ -1,40 +1,44 @@
 ---
 name: mk-orkiestra
-description: Orchestrator mode ("szef orkiestry") for multi-step work: the model the session started on is the boss; it only plans, delegates down its model ladder to cheaper subagent models, picks model and effort per task, accepts or rejects results and integrates them. Use ONLY when the user explicitly asks for it: "orkiestra", "jesteś szefem", "zleć subagentom", "taniej", "deleguj do tańszych modeli", "delegate to cheaper models", "orchestrator mode". Do not start it on your own for an ordinary multi-step task; at most offer it in one line.
+description: Orchestrator mode ("szef orkiestry") for multi-step work: the model the session started on is the boss, whatever rung that is; it plans, delegates work down its model ladder to cheaper subagent models, picks model and effort per task, accepts or rejects results and integrates them, and may consult a stronger model upward (advisor or expert) at defined points. Use ONLY when the user explicitly asks for it: "orkiestra", "jesteś szefem", "zleć subagentom", "taniej", "deleguj do tańszych modeli", "delegate to cheaper models", "doradca", "zapytaj mocniejszy model", "konsultacja w górę", "advisor", "consult a stronger model", "orchestrator mode". Do not start it on your own for an ordinary multi-step task; at most offer it in one line.
 license: MIT
 ---
 
 # Orkiestra — the boss thinks, cheaper models work
 
-The goal: the same quality at the lowest cost.
+The goal: the same quality at the lowest cost. The skill adapts to the
+starting model: work goes down the ladder, questions may go up.
 
 Files next to this one:
 
 - `ladders.toml` — model ladders per harness, as data. Read it before delegating.
 - `harness/<name>.md` — how delegation works in your harness. Read only your own.
 - `helpers/` — helper definitions for harnesses that choose a subagent's model
-  through a definition file (Antigravity, Cursor).
+  through a definition file (Antigravity, Cursor), for delegation down and
+  consultation up.
 
 ## When this applies
 
-Only when the user explicitly asks for orchestrator mode. If they did not, work
-normally, and for a large multi-step task you may offer it in one line.
+Only when the user explicitly asks for orchestrator mode (or for consulting a
+stronger model). Loading this skill is not that request. If the user did not
+ask, work normally, and for a large multi-step task you may offer it in one
+line.
 
 ## The boss's role
 
-The boss is the most expensive model in the session. Every tool call it makes is
-a full turn at the top price over the whole conversation, and the output stays
-in its context until the session ends. Count the boss's cost in turns and
-context, not in how small a command looks.
+The boss is the model the session started on, whatever rung that is. Every call
+the boss makes is paid at the boss's price over the whole conversation, and the
+output stays in its context until the session ends. Count the boss's cost in
+turns and context, not in how small a command looks.
 
 The boss does: understand the request, plan, split the work, choose model and
 effort, write assignments, accept or reject results, decide how the pieces are
-integrated, talk to the user, run production operations (section 5), write the
-handoff (a short note of the state and the next actions).
+integrated, talk to the user, run production operations (section 6), consult
+upward (section 3), write a short handoff note of the state and the next actions.
 
 The boss does not:
 
-- edit code, tests or documentation;
+- edit code, tests or documentation (one exception, in section 2);
 - run test suites, builds, linters or measurements;
 - read the repo to get oriented — orientation is an assignment with a report of
   at most 40 lines;
@@ -55,10 +59,12 @@ does it.
 
 1. The boss is the model this session started on. Find your harness and your
    model in `ladders.toml`.
-2. Delegate only to rungs strictly below your own. Never to your own rung, never
-   above it, and never to a model whose position you cannot establish.
+2. Delegate work only to rungs strictly below your own. Never hand work to your
+   own rung or above it, and never to a model whose position you cannot
+   establish. Rungs above you may only be consulted (section 3).
 3. If you are on the bottom rung, your harness has no ladder, or it has no
-   subagents: work alone. Sections 5 and 8 still apply.
+   subagents: work alone; you may still consult upward. Sections 6 and 10 still
+   apply.
 4. If you cannot tell which model you are, check the harness status (`/status`,
    `/model`) or ask the user once. Work alone until you know.
 5. An explicit instruction from the user in the conversation (another boss,
@@ -68,24 +74,59 @@ does it.
 
 | Task class | Examples | Who |
 |---|---|---|
-| Judgement | security review, hard debugging, draft plan of a migration or data operation, critique of the whole | the highest rung below the boss; with a two-rung ladder the boss does it |
+| Judgement | security review, hard debugging, draft plan of a migration or data operation, critique of the whole | the highest rung below the boss when `ladders.toml` marks that rung `judgement = true`; otherwise the boss does it itself and consults upward at the triggers (section 3) |
 | Execution | implementation from a clear plan, tests, page audit, browser check, rehearsal on a local copy, technical docs | middle rung; with a two-rung ladder the lower rung |
 | Mechanical | orientation in a repo, searches, inventories, scripted measurements, re-measuring after a fix, simple transforms, cleanup | bottom rung |
 | Chores | commit, push, pull, PR, changelog and status docs, lint run (only when the user asked for them or the repository's own instructions require them) | bottom rung, as one bundled assignment |
 
+- A boss whose only rung below is the chores rung (for example Sonnet over
+  Haiku): the chores rung gets mechanical work, chores and execution that is
+  small and fully specified (one or two files, an acceptance command). The boss
+  does the remaining execution itself. This is the one exception to "the boss
+  does not edit code".
 - Choose the cheapest rung you expect to pass acceptance on the first attempt.
   A failed attempt costs more than one rung of difference. Go higher from the
   start when the stakes are high.
 - A rejected result gets one correction from the same subagent, with the defect
-  named. If that fails, give the task to one rung higher. The boss never takes
-  the task over.
+  named. If that fails, give the task to one rung higher, still below the boss.
+  With no such rung, consult upward (section 3, trigger 5) and rewrite the
+  assignment. The boss never takes the task over, except execution under the
+  exception above.
 - Effort: `low` for mechanical work and chores, `medium` by default, `high` only
   where a mistake is costly (migration, security, plan of a production
   operation). Do not give subagents more than `high` unless the user asks.
 - Always set the subagent's model explicitly. A subagent without one usually
   inherits the boss's model and saves nothing.
 
-## 3. Write the assignment
+## 3. Consult upward
+
+Work never goes up the ladder. Questions may. A stronger model is called for one of two things and then hands control back:
+
+- **Advisor**: one question about the work in hand — is this plan sound, why does this keep failing, which of these options. It gets the context, answers in a few hundred words and uses no tools.
+- **Expert**: one bounded judgement task that needs its own reading — a security review of a diff, a plan for a migration or data operation, root-cause analysis in unfamiliar code. It works read-only, returns a report of at most 40 lines and changes nothing.
+
+Who to call: the next rung above you. Go one rung higher only when that answer did not resolve the problem: you applied it and the acceptance check still fails, or it says it is unsure. A rung marked `consent = true` in `ladders.toml` needs the user's yes before its first call in a session: ask once, in one line, with the reason.
+
+Call upward at these points, not on a feeling:
+
+1. before a production write, a deploy or any step that cannot be undone, once the plan is ready;
+2. a plan for a migration, a data operation or a security-relevant change;
+3. the same bug or failing check after two attempts of your own;
+4. a design choice that is expensive to reverse: data model, public interface, dependency, architecture;
+5. a subagent's result failed its one correction and no higher rung exists below you;
+6. before reporting a multi-stage task as finished: one critique of the whole.
+
+Do not call upward for orientation, for anything one read or one test would settle, for style, or for anything a rung below you can do.
+
+Budget: at most three upward calls per stage, and one Expert per stage. When it is spent, stop and tell the user what is unresolved instead of calling again. Never route execution, chores or long tool loops to a rung above you.
+
+How to ask: the decision or the symptom in one sentence, what you tried in numbers, the options you see, and the form of answer you need. An Expert assignment follows the rules for assignments (goal, files, what not to touch, report format) and says "read-only".
+
+Treat the answer as advice from a senior colleague: you keep the task. If you do not follow it, say why in the report. Check what it changes with the same acceptance command as any other work.
+
+The boss on the top rung has nobody above: this section does not apply, and judgement goes to the highest rung below.
+
+## 4. Write the assignment
 
 1. An assignment contains: the goal, the files or pages, what not to touch, the
    definition of "done" as an acceptance command (tests, a build, a query, a
@@ -107,9 +148,9 @@ does it.
 5. Close a stage with one bundled assignment for the bottom rung: the doc and
    changelog updates you list, lint and, only when the user asked for them,
    commit, push or PR. It reports SHAs, URLs and the tail of each command. A merge or push that triggers a
-   deploy is a production operation (section 5).
+   deploy is a production operation (section 6).
 
-## 4. Verify within a budget
+## 5. Verify within a budget
 
 A subagent's report is not evidence. Check each "done" with one call of your
 own: rerun the acceptance command, or one read (`git log -1 --stat`, one query,
@@ -121,7 +162,7 @@ usage limit in a single session (observed on Codex).
 A second agent reviews only a plan of a migration or production operation and a
 security-relevant change, once per stage.
 
-## 5. Production writes and deploys stay with the boss
+## 6. Production writes and deploys stay with the boss
 
 A subagent will not accept the user's consent passed on as a quotation, and
 permission guards block it on production. So:
@@ -133,26 +174,40 @@ permission guards block it on production. So:
 Do not try to route around a refusal with more agents. Each refusal is wasted
 tokens.
 
-## 6. When not to delegate at all
+## 7. When not to delegate at all
 
 A question from the user, a short analysis of data already in the conversation,
 a decision about the order of work, a one-line fix in a status document, and
 anything under the one-call rule.
 
-## 7. Near the context limit
+## 8. Near the context limit
 
 Write the state and a resume prompt to a notes file in the project (keep it out
 of version control if it holds private context) and, if you have a memory or
 handoff mechanism, store it there too. Then let a new session continue. Name the
 boss model and effort in the resume prompt.
 
-## 8. Report to the user
+## 9. Which model to start on
+
+Advice the boss gives when the user asks, or when the task plainly does not
+fit the starting rung:
+
+- routine implementation, fixes and docs: a middle rung;
+- design across several systems, audits, hard debugging: the rung above that;
+- the top rung only when the whole session is judgement.
+
+The skill works from any rung. A boss that sees the task is mostly judgement
+says so in one line and carries on.
+
+## 10. Report to the user
 
 At the end state: what the subagents did (model, effort, number of assignments,
 corrections and escalations per rung), what the boss checked itself, what the
-boss did by hand and why, and what remains unchecked.
+boss did by hand and why, and what remains unchecked. For upward calls: who was
+called, which trigger (by number), what changed because of it, and how many of
+the three were used.
 
-## 9. Check and edit the ladders
+## 11. Check and edit the ladders
 
 `ladders.toml` is an example, not a source of truth: model names and tiers
 change often, and the ones listed may not exist in your account.
@@ -163,8 +218,12 @@ change often, and the ones listed may not exist in your account.
    `/status` (Claude Code).
 3. Edit the `[[<harness>.rung]]` blocks: rungs run from the most capable and
    expensive at the top to the cheapest at the bottom; `ids` are the model IDs
-   you see; `delegate_as` is the value to pass when delegating. Update `chores`
-   (the bottom rung) and `max_parallel` to match your limits, then update
-   `checked`.
+   you see; `delegate_as` is the value to pass when delegating; `judgement`
+   says whether the rung may take judgement tasks; `consent` marks a rung that
+   needs the user's yes before an upward call. Update the `[<harness>.up]`
+   table if your harness consults upward differently, `chores` (the bottom
+   rung) and `max_parallel` to match your limits, then update `checked`.
 4. If you change a model name used in `harness/<name>.md` or in `helpers/`
    (the `model:` line of a helper definition), change it there too.
+5. Treat anything marked untested or unverified in `ladders.toml` and in the
+   harness guides as exactly that; test it before you rely on it.

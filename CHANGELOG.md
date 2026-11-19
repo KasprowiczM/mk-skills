@@ -6,6 +6,31 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-19
+
+### Added
+- `mk-orkiestra`: consulting a stronger model upward (advisor or expert) at six
+  defined triggers, with a budget of three calls per stage and consent for a
+  top rung marked `consent = true`; a Sonnet-over-Haiku execution exception; a
+  section on which model to start on; upward calls in the final report.
+- `ladders.toml` (version 2): `judgement` and `consent` per rung, an
+  `[<harness>.up]` table per harness with live-test results, new example models
+  (Gemini 4 Neon, GPT-6.2 Astra and Sol, tier-grouped Codex rungs), Cursor's
+  Claude-family ladder and the slugs the Task tool accepts.
+- Helpers `mk-orkiestra-advisor` (Cursor) and `mk-orkiestra-pro` (Antigravity),
+  installed and removed by `install.sh` and `uninstall.sh`.
+- `mk-ustrukturyzuj-prompt`: an optional list of available skills (built by
+  `scripts/structure.sh` from `PROMPT_MASTER_SKILLS_DIR` or the harness skills
+  folder), up to four specialists under "Role", skill names under "Tools and
+  resources", and a "Working mode" section for multi-stage tasks.
+- README: consultation upward, the Claude Code advisor, and per-harness test
+  status for delegation down and consultation up.
+
+### Changed
+- `mk-orkiestra` section numbering: the ladder-editing section is now 11.
+- Harness guides gained an "Upward" part; test results are stated as facts about
+  each product and version.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added
@@ -22,5 +47,6 @@ the project uses [Semantic Versioning](https://semver.org/).
   never overwrites without `--force`).
 - English and Polish READMEs, CONTRIBUTING, SECURITY, MIT license.
 
-[Unreleased]: https://github.com/KasprowiczM/mk-skills/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/KasprowiczM/mk-skills/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/KasprowiczM/mk-skills/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/KasprowiczM/mk-skills/releases/tag/v0.1.0
