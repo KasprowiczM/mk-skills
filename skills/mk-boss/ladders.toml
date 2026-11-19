@@ -1,4 +1,4 @@
-# EXAMPLE model ladders for the mk-orkiestra skill, checked on 2026-11-19.
+# EXAMPLE model ladders for the mk-boss skill, checked on 2026-11-19.
 # Model names, tiers and what a harness accepts change often and differ per
 # account: verify these against your own harness's model list and edit them
 # (see section 11 of SKILL.md). Rungs are listed from the top (most capable,
@@ -153,8 +153,8 @@ order_evidence = "confirmed: Google positions Neon between Hydrogen and Carbon (
 # (untested).
 
 [antigravity.up]
-advisor = "a separate one-shot process on a stronger model: `agy --model gemini-4-neon-high --mode plan --output-format json -p=\"<question with context>\"` (the question must carry all context); the `mk-orkiestra-pro` helper only where `pro` resolves above the boss"
-expert = "the same one-shot `agy --model <stronger id> --mode plan -p=\"...\"` with a read-only assignment; or `invoke_subagent` with role `mk-orkiestra-pro` when `pro` resolves above the boss"
+advisor = "a separate one-shot process on a stronger model: `agy --model gemini-4-neon-high --mode plan --output-format json -p=\"<question with context>\"` (the question must carry all context); the `mk-boss-pro` helper only where `pro` resolves above the boss"
+expert = "the same one-shot `agy --model <stronger id> --mode plan -p=\"...\"` with a read-only assignment; or `invoke_subagent` with role `mk-boss-pro` when `pro` resolves above the boss"
 max_per_stage = 3
 tested = "2026-11-19, agy 1.5.12: `invoke_subagent` with the pro and flash helpers both ran (confirmed; resolved models read from the subagent transcripts: pro = gemini-4-hydrogen-tiered-xhigh, flash = gemini-4-hydrogen-tiered-high, boss gemini-4-hydrogen-low), so on the tested account the pro helper was NOT a stronger model; check yours. `agy --model gemini-4-neon-high --mode plan -p=...` confirmed (transcript model gemini-4-neon-high). Not tested: IDE, helper from a Neon boss."
 
@@ -168,7 +168,7 @@ evidence = "Argon confirmed by `agy models`; Carbon confirmed by `cursor-agent m
 [[antigravity.rung]]
 name = "Gemini 4 Neon"
 ids = ["gemini-4-neon-xhigh", "gemini-4-neon-high", "gemini-4-neon-medium", "gemini-4-neon-low"]
-delegate_as = "flash"         # a Neon boss delegates work to the Flash tier, agent `mk-orkiestra-flash`
+delegate_as = "flash"         # a Neon boss delegates work to the Flash tier, agent `mk-boss-flash`
 judgement = true
 evidence = "confirmed: `agy models`; position between Hydrogen and Carbon: Google blog and model card (see order_evidence)"
 
@@ -177,7 +177,7 @@ evidence = "confirmed: `agy models`; position between Hydrogen and Carbon: Googl
 [[antigravity.rung]]
 name = "Flash tier (Gemini 4 Hydrogen / Gemini 3.8 Flash)"
 ids = ["gemini-4-hydrogen-xhigh", "gemini-4-hydrogen-high", "gemini-4-hydrogen-medium", "gemini-4-hydrogen-low", "gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low"]
-delegate_as = "flash"         # agent `mk-orkiestra-flash`
+delegate_as = "flash"         # agent `mk-boss-flash`
 judgement = false
 evidence = "confirmed: `agy models` lists all seven ids; Hydrogen as successor of 3.8 Flash: reported, not verified; the flash tier resolved to gemini-4-hydrogen-tiered-high in the 2026-11-19 test"
 
@@ -197,10 +197,10 @@ order_evidence = "preference (Grok 4.7 as boss, Composer 2.5 as subagent); relat
 task_model_slugs = ["claude-fable-5-2-high", "claude-opus-5-5-medium", "claude-sonnet-5-5-high", "composer-2.5", "composer-2.5-fast", "cursor-grok-4.6-high-fast", "gemini-4-carbon-medium", "gemini-4-neon-high", "gpt-5.6-sol-medium", "grok-4.7-high-fast", "muse-wonder-1.0-high"]
 
 [cursor.up]
-advisor = "helper `mk-orkiestra-advisor` (helpers/cursor/mk-orkiestra-advisor.md, `model: claude-opus-5-5-medium`, read-only); in cursor-agent use the Task tool with `model: \"claude-opus-5-5-medium\"`"
+advisor = "helper `mk-boss-advisor` (helpers/cursor/mk-boss-advisor.md, `model: claude-opus-5-5-medium`, read-only); in cursor-agent use the Task tool with `model: \"claude-opus-5-5-medium\"`"
 expert = "the same helper or Task `model`, assignment says read-only and report at most 40 lines; a Fable id needs the user's consent"
 max_per_stage = 3
-tested = "2026-11-19, cursor-agent 2026.11.19-f005e9d: Task `model: \"claude-opus-5-5-medium\"` from a composer-2.5 `--mode ask` session accepted; the subagent replied that it runs on Claude Opus 5.5 (self-report; the stream shows the slug was accepted, no usage per model). `claude-opus-5-5-high` was REFUSED (not in the allowed slugs). The custom helper name `mk-orkiestra-advisor` was NOT accepted as `subagent_type` in cursor-agent (fixed enum); the file is visible in ~/.cursor/agents. Not tested: IDE, custom subagent by name."
+tested = "2026-11-19, cursor-agent 2026.11.19-f005e9d: Task `model: \"claude-opus-5-5-medium\"` from a composer-2.5 `--mode ask` session accepted; the subagent replied that it runs on Claude Opus 5.5 (self-report; the stream shows the slug was accepted, no usage per model). `claude-opus-5-5-high` was REFUSED (not in the allowed slugs). The custom helper name `mk-boss-advisor` was NOT accepted as `subagent_type` in cursor-agent (fixed enum); the file is visible in ~/.cursor/agents. Not tested: IDE, custom subagent by name."
 
 [[cursor.rung]]
 name = "Grok 4.7"
@@ -212,7 +212,7 @@ evidence = "confirmed: `cursor-agent models` 2026-11-19"
 [[cursor.rung]]
 name = "Composer 2.5"
 ids = ["composer-2.5"]
-delegate_as = "composer-2.5"  # agent `mk-orkiestra-composer`; in cursor-agent also Task `model: "composer-2.5"`
+delegate_as = "composer-2.5"  # agent `mk-boss-composer`; in cursor-agent also Task `model: "composer-2.5"`
 judgement = false
 evidence = "confirmed: `cursor-agent models` 2026-11-19"
 

@@ -19,6 +19,6 @@ leak data or run something destructive, or a way for `install.sh` /
   helper agent folders for Cursor and Antigravity) and to `~/.mk-skills/manifest`.
 - `uninstall.sh` removes only paths recorded in that manifest.
 - Neither script uses the network or `sudo`.
-- `skills/mk-ustrukturyzuj-prompt/scripts/install-quick-action.sh` (macOS, run
+- `skills/mk-prompt/scripts/install-quick-action.sh` (macOS, run
   by you) writes one `.workflow` folder into `~/Library/Services` and runs
   `pbs -update`. `structure.sh` sends the text you give it to the Claude Code CLI.

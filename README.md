@@ -9,8 +9,8 @@ Antigravity and Cursor. One repository, one installer.
 
 | Skill | What it does | Status |
 |---|---|---|
-| [`mk-orkiestra`](skills/mk-orkiestra/SKILL.md) | Orchestrator mode: the session's model is the "boss" that plans and delegates work down a ladder of cheaper subagent models, then spot-checks the results. It can also consult a stronger model upward (advisor or expert) at defined points. The goal: the same quality at a lower cost. | 0.2.0 |
-| [`mk-ustrukturyzuj-prompt`](skills/mk-ustrukturyzuj-prompt/SKILL.md) | Turns rambling or dictated text into one short, well-structured prompt to review before sending. Also a macOS Quick Action and a shell script. Adds a Working mode section and picks fitting skills from your installed skills. | 0.2.0 |
+| [`mk-boss`](skills/mk-boss/SKILL.md) | Orchestrator mode: the session's model is the "boss" that plans and delegates work down a ladder of cheaper subagent models, then spot-checks the results. It can also consult a stronger model upward (advisor or expert) at defined points. The goal: the same quality at a lower cost. | 0.3.0 |
+| [`mk-prompt`](skills/mk-prompt/SKILL.md) | Turns rambling or dictated text into one short, well-structured prompt to review before sending. Also a macOS Quick Action and a shell script. Adds a Working mode section and picks fitting skills from your installed skills. | 0.3.0 |
 
 Adding a skill later is one new folder under `skills/` plus one row above.
 
@@ -21,10 +21,10 @@ Adding a skill later is one new folder under `skills/` plus one row above.
 - At least one supported harness: Claude Code (CLI or desktop Code tab), Codex
   (CLI or ChatGPT/Codex desktop), Antigravity (IDE or `agy`), Cursor (IDE or
   `cursor-agent`). OpenCode is not supported.
-- `mk-ustrukturyzuj-prompt` works in chat with nothing extra; its script and
+- `mk-prompt` works in chat with nothing extra; its script and
   Quick Action need the Claude Code CLI installed and signed in (macOS for the
   Quick Action).
-- `mk-orkiestra` needs a harness that can start subagents; without them it
+- `mk-boss` needs a harness that can start subagents; without them it
   works alone. It acts only when you ask for it explicitly. Test status per
   harness is in the table below.
 
@@ -45,16 +45,16 @@ did and records it in `~/.mk-skills/manifest`. Start a new session afterwards.
 
 ### Where skills go, and how to invoke them
 
-| Harness | User-level skill folder | Source | Invoke | `mk-orkiestra`: delegation down | `mk-orkiestra`: consultation up |
+| Harness | User-level skill folder | Source | Invoke | `mk-boss`: delegation down | `mk-boss`: consultation up |
 |---|---|---|---|---|---|
-| Claude Code | `~/.claude/skills` | verified ([docs](https://code.claude.com/docs/en/skills)) | `/mk-orkiestra`, or automatically by description | tested | tested (advisor tool and `Agent` with a stronger model; Fable advisor and desktop Code tab untested) |
-| Codex | `~/.agents/skills` | verified ([docs](https://learn.chatgpt.com/docs/build-skills)) | `$mk-orkiestra` or `/skills` (CLI/IDE), `@` in ChatGPT, or automatically | tested | partly tested (`codex exec` fallback confirmed; the model of a `spawn_agent` call is unproven) |
-| Antigravity | `~/.gemini/config/skills` | verified ([docs](https://antigravity.google/docs/skills)) | `/mk-orkiestra` (App and CLI), naming it in a message, or automatically | tested for the flash helper (CLI) | partly tested (one-shot `agy --model ...` confirmed; the `pro` helper was not a stronger model on the tested account) |
+| Claude Code | `~/.claude/skills` | verified ([docs](https://code.claude.com/docs/en/skills)) | `/mk-boss`, or automatically by description | tested | tested (advisor tool and `Agent` with a stronger model; Fable advisor and desktop Code tab untested) |
+| Codex | `~/.agents/skills` | verified ([docs](https://learn.chatgpt.com/docs/build-skills)) | `$mk-boss` or `/skills` (CLI/IDE), `@` in ChatGPT, or automatically | tested | partly tested (`codex exec` fallback confirmed; the model of a `spawn_agent` call is unproven) |
+| Antigravity | `~/.gemini/config/skills` | verified ([docs](https://antigravity.google/docs/skills)) | `/mk-boss` (App and CLI), naming it in a message, or automatically | tested for the flash helper (CLI) | partly tested (one-shot `agy --model ...` confirmed; the `pro` helper was not a stronger model on the tested account) |
 | Cursor | `~/.cursor/skills` | verified ([docs](https://cursor.com/docs/skills)) | type `/` in Agent chat and pick it, or automatically | untested | partly tested (Task `model` accepted in `cursor-agent`; helper by name refused there; IDE untested) |
 
 Test results are from 2026-11-19 (Claude Code 2.1.328, codex-cli 0.170.0, agy
 1.5.12, cursor-agent 2026.11.19) and are recorded in `ladders.toml` and the
-harness guides under `skills/mk-orkiestra/harness/`.
+harness guides under `skills/mk-boss/harness/`.
 
 Paths were checked against the official documentation on 2026-11-19. Docs change;
 if a path stops working, open an issue. Notes:
@@ -63,7 +63,7 @@ if a path stops working, open an issue. Notes:
   (`~/.cursor/agents`, `~/.gemini/config/agents`; docs:
   [Cursor](https://cursor.com/docs/subagents),
   [Antigravity](https://antigravity.google/docs/subagents)). `install.sh` copies
-  the helper definitions of `mk-orkiestra` (`skills/mk-orkiestra/helpers/`) there. More in
+  the helper definitions of `mk-boss` (`skills/mk-boss/helpers/`) there. More in
   [docs/harnesses.md](docs/harnesses.md).
 - Cursor also reads `~/.agents/skills`, `~/.claude/skills` and `~/.codex/skills`
   (and subagent definitions from `~/.claude/agents` and `~/.codex/agents`);
@@ -72,7 +72,7 @@ if a path stops working, open an issue. Notes:
 
 ## Usage
 
-- "Use mk-orkiestra: split this migration into assignments for cheaper models and
+- "Use mk-boss: split this migration into assignments for cheaper models and
   check the results."
 - "orkiestra: zleć to subagentom i sprawdź wyniki."
 - "You are the boss, delegate the implementation, keep the cost down."
@@ -80,7 +80,7 @@ if a path stops working, open an issue. Notes:
 On first use the skill reads `ladders.toml`, finds your model's rung and
 delegates only to cheaper rungs. The ladders are examples: check them against
 your own model list and edit them (section 11 of
-[`SKILL.md`](skills/mk-orkiestra/SKILL.md)).
+[`SKILL.md`](skills/mk-boss/SKILL.md)).
 
 #### Consulting a stronger model (upward)
 
@@ -100,7 +100,7 @@ setting `advisorModel`, or `claude --advisor opus`. Without it the skill uses
 the `Agent` tool with the next model up, so it works either way. Other
 harnesses use the mechanisms in `ladders.toml` (`[<harness>.up]`).
 
-### mk-ustrukturyzuj-prompt
+### mk-prompt
 
 Needs nothing in chat. The script and the Quick Action need the Claude Code CLI
 (`claude`) installed and signed in; set `PROMPT_MASTER_MODEL` to change the model
@@ -111,7 +111,7 @@ Working mode and skill selection: when the agent can see which skills are
 installed (or the script finds them, see below), the prompt can name fitting
 skills under "Tools and resources", list up to four specialists under "Role",
 and for a task with several stages add a "Working mode" section, for example
-telling the agent to work in `mk-orkiestra` orchestrator mode. The script builds
+telling the agent to work in `mk-boss` orchestrator mode. The script builds
 the list from `PROMPT_MASTER_SKILLS_DIR` or, by default, the skills folder this
 skill is installed in (at most 60 skills, 160 characters each). Known limit:
 without a skills list the Working mode section is occasionally left out; you
@@ -144,11 +144,11 @@ Write a Python script that:
 ```
 
 For a multi-stage draft ("research three libraries, then build the importer, then
-check it") with `mk-orkiestra` installed, the result also gets a section such as:
+check it") with `mk-boss` installed, the result also gets a section such as:
 
 ```
 ## Working mode
-The task has three stages. Work in `mk-orkiestra` orchestrator mode: delegate
+The task has three stages. Work in `mk-boss` orchestrator mode: delegate
 research, implementation and verification to separate subagents.
 ```
 
@@ -157,7 +157,7 @@ Three ways to use it:
 1. **In chat, by name:** "ustrukturyzuj prompt: <your draft>". The agent replies
    with the structured prompt only; correct it, then say "go" / "wykonaj".
 2. **macOS Quick Action** (select text in any app, it replaces the selection):
-   `bash ~/.claude/skills/mk-ustrukturyzuj-prompt/scripts/install-quick-action.sh`
+   `bash ~/.claude/skills/mk-prompt/scripts/install-quick-action.sh`
    (run it from the installed copy, in your harness's skill folder; the action
    points at the folder the script lives in, so do not move that folder
    afterwards). Flags: `--model <name>` (bakes `PROMPT_MASTER_MODEL=<name>` into
@@ -165,7 +165,7 @@ Three ways to use it:
    `--name`, `--services-dir`, `--force`, `--uninstall`. Assign a shortcut in
    System Settings > Keyboard > Keyboard Shortcuts > Services > Text.
    `uninstall.sh` also removes a Quick Action installed from the copy it removes.
-3. **Terminal:** `pbpaste | ~/.claude/skills/mk-ustrukturyzuj-prompt/scripts/structure.sh | pbcopy`
+3. **Terminal:** `pbpaste | ~/.claude/skills/mk-prompt/scripts/structure.sh | pbcopy`
 
 ## Update
 
@@ -175,12 +175,28 @@ bash install.sh --harness <the one you installed> --skill all --force   # copies
 # rerun with the same --harness value you used the first time
 ```
 
+### Upgrading from 0.2.x
+
+The skills were renamed in 0.3.0: `mk-orkiestra` is now `mk-boss` and
+`mk-ustrukturyzuj-prompt` is now `mk-prompt` (the old trigger phrases such as
+"orkiestra" and "ustrukturyzuj prompt" still work). To upgrade, either:
+
+1. run `bash uninstall.sh` (0.3.0 recognises the old names recorded by 0.2.x and
+   removes only those paths, including a Quick Action installed from the old
+   copy), or run the old `uninstall.sh` from the 0.2.x checkout first; or remove
+   `mk-orkiestra`, `mk-ustrukturyzuj-prompt` and the four helper files
+   `mk-orkiestra-composer.md`, `mk-orkiestra-advisor.md`, `mk-orkiestra-flash.md`
+   and `mk-orkiestra-pro.md` by hand;
+2. then install 0.3.0 (`bash install.sh --harness <harness> --skill all`);
+3. re-run `install-quick-action.sh --force` from the new copy so the Quick
+   Action points at the new path.
+
 ## Uninstall
 
 ```bash
 bash uninstall.sh --dry-run
 bash uninstall.sh                         # all harnesses, all skills
-bash uninstall.sh --harness claude --skill mk-orkiestra
+bash uninstall.sh --harness claude --skill mk-boss
 ```
 
 Only paths that `install.sh` recorded are removed.
@@ -188,7 +204,7 @@ Only paths that `install.sh` recorded are removed.
 ## FAQ / troubleshooting
 
 - **The skill does not show up.** Start a new session (Antigravity CLI: `/skills
-  reload`). Check the folder in the table exists and contains `mk-orkiestra/SKILL.md`.
+  reload`). Check the folder in the table exists and contains `mk-boss/SKILL.md`.
 - **"skip ... (exists)".** The target already exists; use `--force` to replace it.
 - **The subagent used the boss's model and saved nothing.** The harness ignored
   the model choice or the ladder names a model your account does not have. Check

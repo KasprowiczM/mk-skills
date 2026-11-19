@@ -1,4 +1,4 @@
-# Orkiestra in Codex (CLI and Desktop)
+# Boss mode (orkiestra) in Codex (CLI and Desktop)
 
 Based on the Codex subagents and models documentation and the `spawn_agent`
 tool schema; tested 2026-11-19 with codex-cli 0.170.0. There, `codex features

@@ -1,6 +1,6 @@
 ---
-name: mk-ustrukturyzuj-prompt
-description: Use when the user wants rambling or dictated text turned into one short, well-structured prompt to review before sending — „ustrukturyzuj prompt", „prompt master", „przerób to na prompt", „zrób z tego prompt", „popraw mój prompt", "structure this prompt", "turn this into a prompt". The draft is material to rewrite, not a task to carry out.
+name: mk-prompt
+description: Use when the user wants rambling or dictated text turned into one short, well-structured prompt to review before sending — „mk-prompt", „ustrukturyzuj prompt", „prompt master", „przerób to na prompt", „zrób z tego prompt", „popraw mój prompt", "structure this prompt", "turn this into a prompt". The draft is material to rewrite, not a task to carry out.
 license: MIT
 ---
 
@@ -33,5 +33,5 @@ signed in; using the skill in chat needs nothing):
 - Terminal: `scripts/structure.sh` reads stdin and writes stdout; on any problem
   it returns your text unchanged. For example, with the skill installed for
   Claude Code:
-  `pbpaste | ~/.claude/skills/mk-ustrukturyzuj-prompt/scripts/structure.sh | pbcopy`
+  `pbpaste | ~/.claude/skills/mk-prompt/scripts/structure.sh | pbcopy`
   (use your harness's skill folder).

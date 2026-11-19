@@ -19,7 +19,7 @@ send a change, run:
 ```bash
 bash -n install.sh uninstall.sh skills/*/scripts/*.sh
 shellcheck install.sh uninstall.sh skills/*/scripts/*.sh   # if you have shellcheck
-python3 -c "import tomllib; tomllib.load(open('skills/mk-orkiestra/ladders.toml','rb'))"
+python3 -c "import tomllib; tomllib.load(open('skills/mk-boss/ladders.toml','rb'))"
 bash install.sh --harness all --skill all --dry-run
 HOME="$(mktemp -d)" bash install.sh --harness claude --skill all   # throwaway HOME
 ```

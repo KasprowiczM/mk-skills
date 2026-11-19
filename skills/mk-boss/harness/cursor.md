@@ -1,4 +1,4 @@
-# Orkiestra in Cursor (IDE and `cursor-agent` CLI)
+# Boss mode (orkiestra) in Cursor (IDE and `cursor-agent` CLI)
 
 Based on `cursor-agent models` and the Cursor subagents documentation. Tested
 2026-11-19 with cursor-agent 2026.11.19-f005e9d in headless runs
@@ -14,18 +14,18 @@ partly tested, the IDE is untested.
   `ladders.toml` (`cursor.claude_rung`), and Composer 2.5 as the chores rung.
 - A subagent's model comes from its definition file (`model:` in the
   frontmatter; default `inherit`, the boss's model). Use the subagent
-  `mk-orkiestra-composer`, defined in
-  `helpers/cursor/mk-orkiestra-composer.md` in this skill. Cursor reads
+  `mk-boss-composer`, defined in
+  `helpers/cursor/mk-boss-composer.md` in this skill. Cursor reads
   subagent definitions from `~/.cursor/agents/`, not from the skill folder, so
   copy or link the file there: `install.sh` does this for Cursor.
-- Start it with the Task tool, with `/mk-orkiestra-composer <assignment>`, or by
-  writing "Use the mk-orkiestra-composer subagent to …". Several Task calls in one
+- Start it with the Task tool, with `/mk-boss-composer <assignment>`, or by
+  writing "Use the mk-boss-composer subagent to …". Several Task calls in one
   message run in parallel. At most 2 at once.
 - In `cursor-agent` the Task tool takes an optional `model` and a fixed list of
-  `subagent_type` values; in the tested version `mk-orkiestra-advisor` was not in that
+  `subagent_type` values; in the tested version `mk-boss-advisor` was not in that
   list, so the helper was not invocable by name there. Pass `model` directly
   (allowed slugs: see `task_model_slugs` in `ladders.toml`; `composer-2.5` is
-  one). Whether the same limit applies to `orkiestra-composer` and to the IDE
+  one). Whether the same limit applies to `mk-boss-composer` and to the IDE
   was not tested.
 - A subagent starts with a clean context: the assignment must carry everything
   it needs.
@@ -35,12 +35,12 @@ partly tested, the IDE is untested.
 ## The boss's role here
 
 1. Model: it comes from the definition file. Always delegate through
-   `mk-orkiestra-composer`, never through an undefined helper: it would inherit
+   `mk-boss-composer`, never through an undefined helper: it would inherit
    the boss's model.
-2. Orientation and searches: `mk-orkiestra-composer`, report of at most 40 lines.
+2. Orientation and searches: `mk-boss-composer`, report of at most 40 lines.
    Effort cannot be set.
 3. Chores (only when the user asked for them: commit, push, pull, PR, changelog, lint): one bundled
-   assignment to `mk-orkiestra-composer`. Execution and mechanical work go to it
+   assignment to `mk-boss-composer`. Execution and mechanical work go to it
    too; it is the only rung below the boss.
 4. Writers: by default a subagent leaves its changes in the working tree and
    reports the changed files; it commits or pushes only when the user asked or
@@ -57,10 +57,10 @@ partly tested, the IDE is untested.
 
 Section 3 of the skill says when.
 
-- Helper `mk-orkiestra-advisor` (`helpers/cursor/mk-orkiestra-advisor.md`,
+- Helper `mk-boss-advisor` (`helpers/cursor/mk-boss-advisor.md`,
   copied into `~/.cursor/agents/` by `install.sh`): `model: claude-opus-5-5-medium`, `readonly: true`.
-  Start it like the composer helper (`/mk-orkiestra-advisor <question>` or "Use
-  the mk-orkiestra-advisor subagent to ..."). It answers one question or does one
+  Start it like the composer helper (`/mk-boss-advisor <question>` or "Use
+  the mk-boss-advisor subagent to ..."). It answers one question or does one
   read-only review in at most 40 lines. A Fable id needs the user's yes first.
 - In `cursor-agent`: Task with `model: "claude-opus-5-5-medium"` and a prompt
   that carries the full question, says "read-only" for an Expert, and asks the
@@ -77,7 +77,7 @@ Tested 2026-11-19 (cursor-agent 2026.11.19-f005e9d,
   usage per model): works, evidence is the accepted slug plus the self-report.
 - `claude-opus-5-5-high` was refused: the Task `model` accepts only a short
   list of slugs. The helper therefore names the `-medium` id.
-- `mk-orkiestra-advisor` as `subagent_type` was refused in `cursor-agent` (fixed
+- `mk-boss-advisor` as `subagent_type` was refused in `cursor-agent` (fixed
   enum). The helper file exists and is visible; invoking it by name was not
   proven in the CLI and not tried in the IDE.
 
@@ -85,12 +85,12 @@ Tested 2026-11-19 (cursor-agent 2026.11.19-f005e9d,
 
 | Boss | May delegate work to | Consult upward |
 |---|---|---|
-| Grok 4.7 | `mk-orkiestra-composer` for execution, mechanical work and chores; judgement stays with the boss | `mk-orkiestra-advisor` (Claude Opus 5.5); Fable only with the user's yes |
-| Composer 2.5 | nobody; work alone | `mk-orkiestra-advisor` (Claude Opus 5.5); Fable only with the user's yes |
+| Grok 4.7 | `mk-boss-composer` for execution, mechanical work and chores; judgement stays with the boss | `mk-boss-advisor` (Claude Opus 5.5); Fable only with the user's yes |
+| Composer 2.5 | nobody; work alone | `mk-boss-advisor` (Claude Opus 5.5); Fable only with the user's yes |
 | Fable (Claude family) | `claude-opus-5-5-medium` (judgement), `claude-sonnet-5-5-high` (execution), `composer-2.5` (mechanical work and chores) | nobody |
 | Opus (Claude family) | `claude-sonnet-5-5-high` (execution, judgement at high), `composer-2.5` (mechanical work and chores) | Fable ids, user's yes first |
 | Sonnet (Claude family) | `composer-2.5` (mechanical work and chores); the boss does the remaining execution | Opus, then Fable (user's yes first) |
-| any other model | nobody, unless the user names the subagent model | `mk-orkiestra-advisor` |
+| any other model | nobody, unless the user names the subagent model | `mk-boss-advisor` |
 
 `cursor-agent models` may also list `gemini-4-neon-*`,
 `gemini-4-hydrogen-*`, `gemini-4-carbon-*`, `gemini-4-argon-*` and

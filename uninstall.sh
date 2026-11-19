@@ -13,7 +13,8 @@ usage() {
 Usage: uninstall.sh [--harness <claude|codex|antigravity|cursor|all>] [--skill <name|all>] [--dry-run]
 
 Removes only the folders, links and helper files that install.sh recorded.
-Anything else in your skill folders is left alone. A Quick Action installed from
+Entries recorded by 0.2.x under the old names (mk-orkiestra, mk-ustrukturyzuj-prompt)
+are removed too, also with --skill mk-boss / mk-prompt. Anything else in your skill folders is left alone. A Quick Action installed from
 a skill copy that is being removed is removed with it.
 USAGE
 }
@@ -59,7 +60,9 @@ KEEP="$MANIFEST.keep"
 : > "$KEEP"
 while IFS='|' read -r h s p; do
   [ -n "$p" ] || continue
-  if { [ "$HARNESS" = "all" ] || [ "$HARNESS" = "$h" ]; } && { [ "$SKILL" = "all" ] || [ "$SKILL" = "$s" ]; }; then
+  # 0.2.x installs recorded the old skill names; treat them as the renamed skills.
+  case "$s" in mk-orkiestra) s2=mk-boss ;; mk-ustrukturyzuj-prompt) s2=mk-prompt ;; *) s2="$s" ;; esac
+  if { [ "$HARNESS" = "all" ] || [ "$HARNESS" = "$h" ]; } && { [ "$SKILL" = "all" ] || [ "$SKILL" = "$s" ] || [ "$SKILL" = "$s2" ]; }; then
     case "$p" in
       "$HOME"/?*) ;;
       *) echo "skip    $p (outside HOME)"; printf '%s|%s|%s\n' "$h" "$s" "$p" >> "$KEEP"; continue ;;

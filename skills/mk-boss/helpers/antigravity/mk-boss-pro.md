@@ -1,6 +1,6 @@
 ---
-name: mk-orkiestra-pro
-description: Upward helper on the Pro tier for the mk-orkiestra skill. Answers one question from a boss on a lower rung (is this plan sound, why does this keep failing, which option) or does one bounded read-only review (security, migration plan, root cause) and reports at most 40 lines. Changes nothing. Use only at the consult-upward triggers of the skill.
+name: mk-boss-pro
+description: Upward helper on the Pro tier for the mk-boss skill. Answers one question from a boss on a lower rung (is this plan sound, why does this keep failing, which option) or does one bounded read-only review (security, migration plan, root cause) and reports at most 40 lines. Changes nothing. Use only at the consult-upward triggers of the skill.
 subagent: true
 mainAgent: false
 model: pro

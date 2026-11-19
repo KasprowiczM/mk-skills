@@ -1,12 +1,12 @@
 # Harness notes
 
 Details that would make the README too long. For paths, invocation and the
-test status of `mk-orkiestra` per harness see the table in
+test status of `mk-boss` per harness see the table in
 [README.md](../README.md). Test results were recorded on 2026-11-19 (Claude Code
 2.1.328, codex-cli 0.170.0, agy 1.5.12, cursor-agent 2026.11.19); the full
 facts, including what failed and the workaround, are in
-`skills/mk-orkiestra/ladders.toml` (`[<harness>.up].tested`) and in
-`skills/mk-orkiestra/harness/<name>.md`.
+`skills/mk-boss/ladders.toml` (`[<harness>.up].tested`) and in
+`skills/mk-boss/harness/<name>.md`.
 
 ## Claude Code (CLI and desktop Code tab)
 
@@ -22,7 +22,7 @@ facts, including what failed and the workaround, are in
 
 ## Codex (CLI and ChatGPT/Codex desktop)
 
-- Skills: `$HOME/.agents/skills`. Mention a skill with `$mk-orkiestra` (CLI/IDE)
+- Skills: `$HOME/.agents/skills`. Mention a skill with `$mk-boss` (CLI/IDE)
   or `@` (ChatGPT), or let Codex pick it by description.
 - Delegation down: tested. The skill delegates with `spawn_agent`, choosing the
   model per call; no helper file is needed.
@@ -38,12 +38,12 @@ facts, including what failed and the workaround, are in
   `~/.gemini/antigravity-cli/skills` and `~/.gemini/skills`; the App does not.
   Run `/skills reload` or start a new conversation after installing.
 - Antigravity chooses a subagent's model from an agent definition
-  (`model: inherit|flash|pro`), not from the call. `mk-orkiestra` therefore ships
-  `helpers/antigravity/mk-orkiestra-flash.md` (delegation down) and
-  `helpers/antigravity/mk-orkiestra-pro.md` (consultation up). Subagent
+  (`model: inherit|flash|pro`), not from the call. `mk-boss` therefore ships
+  `helpers/antigravity/mk-boss-flash.md` (delegation down) and
+  `helpers/antigravity/mk-boss-pro.md` (consultation up). Subagent
   definitions live in `~/.gemini/config/agents/`, outside the skill folder, so
   `install.sh` copies (or links) the files there. Manual step without the
-  installer: `cp skills/mk-orkiestra/helpers/antigravity/*.md ~/.gemini/config/agents/`
+  installer: `cp skills/mk-boss/helpers/antigravity/*.md ~/.gemini/config/agents/`
 - Delegation down: tested for the flash helper in the CLI. On the tested account
   `flash` resolved to Hydrogen at high effort.
 - Consultation up: partly tested. On the tested account `pro` resolved to
@@ -58,9 +58,9 @@ facts, including what failed and the workaround, are in
   `~/.claude/skills` and `~/.codex/skills`, and subagent definitions from
   `~/.claude/agents` and `~/.codex/agents`; install into one place only.
 - Subagent definitions live in `~/.cursor/agents/`. `install.sh` copies
-  `helpers/cursor/mk-orkiestra-composer.md` and
-  `helpers/cursor/mk-orkiestra-advisor.md` there. Manual step without the
-  installer: `cp skills/mk-orkiestra/helpers/cursor/*.md ~/.cursor/agents/`
+  `helpers/cursor/mk-boss-composer.md` and
+  `helpers/cursor/mk-boss-advisor.md` there. Manual step without the
+  installer: `cp skills/mk-boss/helpers/cursor/*.md ~/.cursor/agents/`
 - Delegation down: untested.
 - Consultation up: partly tested. In `cursor-agent` the Task tool's `model`
   accepts only a short list of slugs (for example `claude-opus-5-5-medium`, not
@@ -68,8 +68,8 @@ facts, including what failed and the workaround, are in
 
 ## Editing the model ladders
 
-See section 11 of `skills/mk-orkiestra/SKILL.md`. In short: list your models
+See section 11 of `skills/mk-boss/SKILL.md`. In short: list your models
 (`codex debug models`, `cursor-agent models`, `agy models`, `/model`), edit
-`skills/mk-orkiestra/ladders.toml` (and the `model:` line of the helper
+`skills/mk-boss/ladders.toml` (and the `model:` line of the helper
 definitions), then reinstall with `--force`. With `--link` the installed skill
 is your checkout, so edits apply immediately.

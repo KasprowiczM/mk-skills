@@ -1,4 +1,4 @@
-# Orkiestra in Claude Code and Claude Desktop (Code tab)
+# Boss mode (orkiestra) in Claude Code and Claude Desktop (Code tab)
 
 Written against the `Agent` tool schema; the upward part was tested on
 2026-11-19 with Claude Code 2.1.328 in print mode and checked against

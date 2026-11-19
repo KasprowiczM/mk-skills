@@ -1,5 +1,5 @@
 #!/bin/bash
-# mk-ustrukturyzuj-prompt: draft on stdin -> structured prompt on stdout.
+# mk-prompt: draft on stdin -> structured prompt on stdout.
 # Never loses the text: on ANY problem (empty input, no mktemp, missing or
 # failing CLI, timeout, empty answer, failed cleanup step) it prints the
 # original draft unchanged and exits 0; on macOS it also shows a notification.

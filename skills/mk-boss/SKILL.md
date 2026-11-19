@@ -1,10 +1,10 @@
 ---
-name: mk-orkiestra
-description: Orchestrator mode ("szef orkiestry") for multi-step work: the model the session started on is the boss, whatever rung that is; it plans, delegates work down its model ladder to cheaper subagent models, picks model and effort per task, accepts or rejects results and integrates them, and may consult a stronger model upward (advisor or expert) at defined points. Use ONLY when the user explicitly asks for it: "orkiestra", "jesteś szefem", "zleć subagentom", "taniej", "deleguj do tańszych modeli", "delegate to cheaper models", "doradca", "zapytaj mocniejszy model", "konsultacja w górę", "advisor", "consult a stronger model", "orchestrator mode". Do not start it on your own for an ordinary multi-step task; at most offer it in one line.
+name: mk-boss
+description: Orchestrator mode ("szef orkiestry") for multi-step work: the model the session started on is the boss, whatever rung that is; it plans, delegates work down its model ladder to cheaper subagent models, picks model and effort per task, accepts or rejects results and integrates them, and may consult a stronger model upward (advisor or expert) at defined points. Use ONLY when the user explicitly asks for it: "mk-boss", "boss mode", "orkiestra", "jesteś szefem", "zleć subagentom", "taniej", "deleguj do tańszych modeli", "delegate to cheaper models", "doradca", "zapytaj mocniejszy model", "konsultacja w górę", "advisor", "consult a stronger model", "orchestrator mode". Do not start it on your own for an ordinary multi-step task; at most offer it in one line.
 license: MIT
 ---
 
-# Orkiestra — the boss thinks, cheaper models work
+# Boss mode (orkiestra) — the boss thinks, cheaper models work
 
 The goal: the same quality at the lowest cost. The skill adapts to the
 starting model: work goes down the ladder, questions may go up.
