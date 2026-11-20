@@ -6,6 +6,23 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-21
+
+### Added
+- `mk-prompt`: before writing, the agent asks 0-3 clarifying questions about real
+  gaps only (contradictions or a missing must-know fact), each with 2-3 short
+  options; the rules are in the new `skills/mk-prompt/questions.md`. A skipped
+  question goes under the open questions.
+- `mk-prompt`: an explicit refine loop. Notes added to the prompt are merged into
+  the section they belong to, only new gaps are asked about, and the whole
+  updated prompt is shown again.
+
+### Changed
+- `skills/mk-prompt/instructions.md`: accepts `<current_prompt>`, `<additions>` and
+  `<answers>` blocks besides `<draft>`; skipped answers go under the open
+  questions. `scripts/structure.sh` is unchanged and stays non-interactive (no
+  questions).
+
 ## [0.3.0] - 2026-11-19
 
 ### Changed
@@ -66,7 +83,8 @@ path.
   never overwrites without `--force`).
 - English and Polish READMEs, CONTRIBUTING, SECURITY, MIT license.
 
-[Unreleased]: https://github.com/KasprowiczM/mk-skills/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/KasprowiczM/mk-skills/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/KasprowiczM/mk-skills/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/KasprowiczM/mk-skills/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/KasprowiczM/mk-skills/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/KasprowiczM/mk-skills/releases/tag/v0.1.0

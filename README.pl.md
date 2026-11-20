@@ -10,7 +10,7 @@ Antigravity i Cursor. Jedno repozytorium, jeden instalator.
 | Skill | Co robi | Status |
 |---|---|---|
 | [`mk-boss`](skills/mk-boss/SKILL.md) | Tryb orkiestry: model sesji jest „szefem”, który planuje i zleca pracę tańszym modelom subagentów (drabinka modeli), a potem wyrywkowo sprawdza wyniki. Może też w określonych momentach zapytać mocniejszy model (doradca lub ekspert). Cel: ta sama jakość przy niższym koszcie. | 0.3.0 |
-| [`mk-prompt`](skills/mk-prompt/SKILL.md) | Zamienia chaotyczny lub podyktowany tekst w jeden krótki, uporządkowany prompt do przejrzenia przed wysłaniem. Także Quick Action w macOS i skrypt powłoki. Dodaje sekcję „Tryb pracy” i dobiera pasujące skille z zainstalowanych. | 0.3.0 |
+| [`mk-prompt`](skills/mk-prompt/SKILL.md) | Zamienia chaotyczny lub podyktowany tekst w jeden krótki, uporządkowany prompt do przejrzenia przed wysłaniem. Także Quick Action w macOS i skrypt powłoki. Dodaje sekcję „Tryb pracy” i dobiera pasujące skille z zainstalowanych. W czacie najpierw zadaje do trzech krótkich pytań o realne luki, potem uzupełnia prompt o to, co dopiszesz. | 0.4.0 |
 
 Dodanie skilla to jeden nowy folder w `skills/` i jeden wiersz w tabeli.
 
@@ -121,6 +121,16 @@ zainstalowany ten skill (do 60 skilli, po 160 znaków). Znane ograniczenie: bez
 listy skilli sekcja „Tryb pracy” bywa pominięta; prompt i tak przeglądasz przed
 wysłaniem.
 
+Pytania doprecyzowujące i uzupełnianie (czat): przed napisaniem agent czyta szkic
+wyłącznie pod kątem realnych luk, czyli sprzeczności albo brakującego, ważnego
+faktu (dla kogo, zakres, format, źródło, termin, cel), i zadaje najwyżej trzy
+krótkie pytania z dwiema lub trzema opcjami, w Twoim języku. Odpowiedz krótko
+albo pomiń; pominięte pytanie trafia do „Do doprecyzowania”. Jasny szkic nie
+dostaje żadnych pytań. Potem dopisz do promptu notatki w dowolnym miejscu i
+formie: agent wplata każdą do właściwej sekcji, pyta tylko o nowe luki i
+pokazuje cały zaktualizowany prompt. Skrypt i Quick Action są nieinteraktywne
+i nigdy o nic nie pytają.
+
 Przed (podyktowany szkic):
 
 > no to chciałbym taki skrypt, yyy, w pythonie, który przechodzi po wszystkich
@@ -158,8 +168,10 @@ implementację i weryfikację osobnym subagentom.
 
 Trzy sposoby użycia:
 
-1. **W czacie, po nazwie:** „ustrukturyzuj prompt: <Twój szkic>”. Agent odpowiada
-   samym uporządkowanym promptem; popraw go, potem powiedz „wykonaj” / "go".
+1. **W czacie, po nazwie:** „ustrukturyzuj prompt: <Twój szkic>”. Agent może
+   najpierw zadać kilka krótkich pytań, potem odpowiada samym uporządkowanym
+   promptem; dopisz notatki albo poprawki (pokaże cały prompt ponownie), potem
+   powiedz „wykonaj” / "go".
 2. **Quick Action w macOS** (zaznacz tekst w dowolnej aplikacji, wynik zastępuje
    zaznaczenie):
    `bash ~/.claude/skills/mk-prompt/scripts/install-quick-action.sh`

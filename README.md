@@ -10,7 +10,7 @@ Antigravity and Cursor. One repository, one installer.
 | Skill | What it does | Status |
 |---|---|---|
 | [`mk-boss`](skills/mk-boss/SKILL.md) | Orchestrator mode: the session's model is the "boss" that plans and delegates work down a ladder of cheaper subagent models, then spot-checks the results. It can also consult a stronger model upward (advisor or expert) at defined points. The goal: the same quality at a lower cost. | 0.3.0 |
-| [`mk-prompt`](skills/mk-prompt/SKILL.md) | Turns rambling or dictated text into one short, well-structured prompt to review before sending. Also a macOS Quick Action and a shell script. Adds a Working mode section and picks fitting skills from your installed skills. | 0.3.0 |
+| [`mk-prompt`](skills/mk-prompt/SKILL.md) | Turns rambling or dictated text into one short, well-structured prompt to review before sending. Also a macOS Quick Action and a shell script. Adds a Working mode section and picks fitting skills from your installed skills. In chat it first asks up to three short clarifying questions about real gaps, then refines the prompt as you add notes. | 0.4.0 |
 
 Adding a skill later is one new folder under `skills/` plus one row above.
 
@@ -117,6 +117,16 @@ skill is installed in (at most 60 skills, 160 characters each). Known limit:
 without a skills list the Working mode section is occasionally left out; you
 review the prompt before sending anyway.
 
+Clarifying questions and refining (chat): before writing, the agent reads the
+draft for real gaps only, meaning contradictions or a missing must-know fact
+(for whom, scope, format, source, deadline, target), and asks at most three
+short questions with two or three options each, in your language. Answer
+briefly or skip; a skipped question ends up under "Open questions". A clear
+draft gets no questions. Then add notes to the prompt anywhere, in any form: the
+agent merges each into the section where it belongs, asks only about new gaps
+and shows the whole updated prompt again. The script and the Quick Action are
+non-interactive and never ask.
+
 Before (a dictated draft):
 
 > so I want like a script, uh, in python, that goes through all the csv files in
@@ -154,8 +164,10 @@ research, implementation and verification to separate subagents.
 
 Three ways to use it:
 
-1. **In chat, by name:** "ustrukturyzuj prompt: <your draft>". The agent replies
-   with the structured prompt only; correct it, then say "go" / "wykonaj".
+1. **In chat, by name:** "ustrukturyzuj prompt: <your draft>". The agent may
+   ask a few short questions first, then replies with the structured prompt
+   only; add notes or corrections (it shows the whole prompt again), then say
+   "go" / "wykonaj".
 2. **macOS Quick Action** (select text in any app, it replaces the selection):
    `bash ~/.claude/skills/mk-prompt/scripts/install-quick-action.sh`
    (run it from the installed copy, in your harness's skill folder; the action
