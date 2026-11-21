@@ -6,6 +6,13 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-21
+
+### Added
+- Added mk-progress mod (0.8.0): `plugins/mk-progress/` plus `.claude-plugin/marketplace.json`.
+  Install with `/plugin marketplace add KasprowiczM/mk-skills` and
+  `/plugin install mk-progress@mk-skills`.
+
 ## [0.4.0] - 2026-11-21
 
 ### Added

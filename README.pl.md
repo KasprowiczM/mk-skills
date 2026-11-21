@@ -14,6 +14,19 @@ Antigravity i Cursor. Jedno repozytorium, jeden instalator.
 
 Dodanie skilla to jeden nowy folder w `skills/` i jeden wiersz w tabeli.
 
+## Mody
+
+Mody to wtyczki Claude Code. Instaluje się je przez `/plugin`, nie przez `install.sh` (ten obsługuje tylko skille), i wymagają wersji Claude Code z obsługą modów i hooków wtyczek.
+
+| Mod | Co robi | Wersja |
+|---|---|---|
+| [`mk-progress`](plugins/mk-progress/README.md) | Mod do Claude Code: boczny panel z kartami subagentów na żywo (krab Clawd w kolorze modelu, kroki, czas, tokeny, koszt) i pasek postępu planu nad promptem. | 0.8.0 |
+
+```
+/plugin marketplace add KasprowiczM/mk-skills
+/plugin install mk-progress@mk-skills
+```
+
 ## Wymagania
 
 - macOS lub Linux z `bash` (3.2 lub nowszy). Instalator nie potrzebuje niczego
