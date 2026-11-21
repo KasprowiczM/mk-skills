@@ -6,6 +6,11 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-11-21
+
+### Changed
+- mk-progress 0.9.4: blink is an eye-only overlay; slimmer crab (terminal 7 by 3 with thin box-drawing limbs, Svg 21 by 18 px with thin leg and arm strokes).
+
 ## [0.6.3] - 2026-11-21
 
 ### Changed

@@ -33,12 +33,12 @@ const MAX_STEPS = 200
 const TAG_W = 11
 // The pane asks the dock for this many body columns; the layout works at any width from 32 up.
 const PANE_COLS = 48
-// Columns the pet takes beside a card: the terminal Clawd is 9 wide, plus one gap; the Svg one is 27 CSS
-// pixels (about 4 columns) wide and the "#N" tag under it is at most 3.
-const PET_W = 10
-const PET_W_SVG = 5
-// The Svg crab: the 18 by 6 pixel grid of Claude Code's own Clawd, each pixel 1.5 wide and 3 tall (the 1:2 of a terminal quadrant).
-const PET_PX_W = 27
+// Columns the pet takes beside a card: the terminal Clawd is 7 wide, plus one gap; the Svg one is 21 CSS
+// pixels (about 3 columns) wide and the "#N" tag under it is at most 3.
+const PET_W = 8
+const PET_W_SVG = 4
+// The Svg crab: a 14 by 6 pixel grid, each pixel 1.5 wide and 3 tall (the 1:2 of a terminal quadrant).
+const PET_PX_W = 21
 const PET_PX_H = 18
 // A collapsed card shows this many earlier steps under the current one.
 const HISTORY = 3
@@ -118,21 +118,28 @@ const EYE = '#2b1d16'
 const FRAMES = 4
 
 /**
- * Clawd as Claude Code draws it at start-up: quadrant block glyphs, 9 columns by 3 rows. The glyphs are the single
- * source: the terminal prints them, and the Svg decodes them into an 18 by 6 grid of pixels. Row 0 is the head with
- * its two eye holes, row 1 the body, row 2 the four legs. Only the claws (columns 0 and 8 of rows 0 and 1) and the
- * legs move; the head, eyes and body (columns 1 to 7 of rows 0 and 1) are the same in every frame.
+ * A slim Clawd: the silhouette of the one on the Claude Code start-up screen, narrower, 7 columns by 3 rows. The
+ * glyphs are the single source: the terminal prints them, and the Svg decodes them into a 14 by 6 grid of pixels,
+ * the thin box-drawing glyphs (╶ ╴ ╵ ╹) as thin strokes. Row 0 is the head with its two eye holes (▛ and ▜), row 1 the
+ * body with thin arms, row 2 the thin legs. Only the claws (columns 0 and 6 of rows 0 and 1) and the legs move; the head
+ * and body (columns 1 to 5 of rows 0 and 1) are the same in every frame. A blink is a separate overlay that closes the
+ * eye cells of the head row and nothing else.
  * Frame 0 stands, 1 steps (legs apart), 2 raises its claws, 3 raises them and steps.
  */
 const CLAWD: readonly (readonly [string, string, string])[] = [
-  [' ▐▛███▜▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '],
-  [' ▐▛███▜▌ ', '▝▜█████▛▘', ' ▘ ▘ ▝ ▝ '],
-  ['▗▐▛███▜▌▖', ' ▜█████▛ ', '  ▘▘ ▝▝  '],
-  ['▗▐▛███▜▌▖', ' ▜█████▛ ', ' ▘ ▘ ▝ ▝ '],
+  [' ▐▛█▜▌ ', '╶▜███▛╴', ' ╵╵ ╵╵ '],
+  [' ▐▛█▜▌ ', '╶▜███▛╴', ' ╵ ╵╵ ╵'],
+  ['╹▐▛█▜▌╹', ' ▜███▛ ', ' ╵╵ ╵╵ '],
+  ['╹▐▛█▜▌╹', ' ▜███▛ ', ' ╵ ╵╵ ╵'],
 ]
 
 /** The three rows of a pet: a running one walks through the frames, a finished one stands in frame 0. */
-const petRows = (frame: number): string[] => [...CLAWD[((frame % FRAMES) + FRAMES) % FRAMES]!]
+const petRows = (frame: number, blink = false): string[] => {
+  const rows = [...CLAWD[((frame % FRAMES) + FRAMES) % FRAMES]!]
+  // A blink is an overlay on any limb frame: only the head row's eye cells close (▛ and ▜ become full blocks).
+  if (blink) rows[0] = rows[0]!.replace('▛', '█').replace('▜', '█')
+  return rows
+}
 
 // Which quarters of a cell a quadrant glyph fills: top left, top right, bottom left, bottom right.
 const QUAD: Record<string, [number, number, number, number]> = {
@@ -152,21 +159,32 @@ const QUAD: Record<string, [number, number, number, number]> = {
   '▟': [0, 1, 1, 1],
 }
 
+// The thin box-drawing glyphs as strokes in grid units from the cell's corner: x, y, width, height.
+const STROKE: Record<string, [number, number, number, number]> = {
+  '╶': [1, 0.75, 1, 0.5],
+  '╴': [0, 0.75, 1, 0.5],
+  '╵': [0.75, 0, 0.5, 1],
+  '╹': [0.5, 0, 1, 1],
+}
+
 const petCache = new Map<string, string>()
 
-/** The pet as an Svg on an 18 by 6 pixel grid, built from the original glyph rows. */
-function petSvg(color: string, frame: number) {
-  const key = `${color}:${frame % FRAMES}`
+/** The pet as an Svg on a 14 by 6 pixel grid, built from the glyph rows: quadrants as pixels, thin glyphs as thin strokes. */
+function petSvg(color: string, frame: number, blink = false) {
+  const key = `${color}:${frame % FRAMES}:${blink ? 'b' : 'o'}`
   const hit = petCache.get(key)
   if (hit) return hit
-  const rows = petRows(frame)
+  const rows = petRows(frame, blink)
   const W = rows[0]!.length * 2
   const H = rows.length * 2
   const grid: number[][] = Array.from({ length: H }, () => Array<number>(W).fill(0))
   const eyes: [number, number][] = []
+  const strokes: [number, number, number, number][] = []
   rows.forEach((row, r) => {
     ;[...row].forEach((g, c) => {
       const q = QUAD[g] ?? QUAD[' ']!
+      const st = STROKE[g]
+      if (st) strokes.push([c * 2 + st[0], r * 2 + st[1], st[2], st[3]])
       q.forEach((on, k) => {
         if (on) grid[r * 2 + (k >> 1)]![c * 2 + (k & 1)] = 1
       })
@@ -190,6 +208,7 @@ function petSvg(color: string, frame: number) {
       x = end
     }
   })
+  for (const [x, y, w, h] of strokes) rects.push(`<rect class="${cls}" x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}"/>`)
   for (const [x, y] of eyes) rects.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${EYE}"/>`)
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${PET_PX_W}" height="${PET_PX_H}" preserveAspectRatio="none" shape-rendering="crispEdges"><style>@media (prefers-color-scheme: dark){.${cls}{fill:${darkOf(color)}}}</style>${rects.join('')}</svg>`
   petCache.set(key, svg)
@@ -1384,22 +1403,26 @@ export const register: Register = on => {
     // A running pet steps through its frames on the clock tick; a finished one stands still.
     const frameOf = (hp: Helper) => (hp.phase === 'working' ? Math.floor(clk.tick / FRAME_TICKS) % FRAMES : 0)
 
+    // A running crab blinks for one step about every 3.6 s, on a clock of its own (a seat's offset keeps cards out of step); a finished one keeps its eyes open.
+    const blinkOf = (hp: Helper) => hp.phase === 'working' && (Math.floor(clk.tick / FRAME_TICKS) + hp.seat * 2) % 6 === 5
+
     const pet = (hp: Helper) => {
       const color = modelColor(hp.model)
       const frame = frameOf(hp)
+      const blink = blinkOf(hp)
       // A small dim "#1" under the crab tells two cards on the same model apart.
       const seatTag = <Text key={`seat-${hp.id}`} dimColor>{`#${hp.seat + 1}`}</Text>
       if (Svg) {
         return (
           <Box key={`pet-${hp.id}`} width={petW} flexShrink={0} flexDirection="column" justifyContent="center">
-            <Svg source={petSvg(color, frame)} alt={`Claude crab, ${familyName(hp.model)}`} width={PET_PX_W} height={PET_PX_H} />
+            <Svg source={petSvg(color, frame, blink)} alt={`Claude crab, ${familyName(hp.model)}`} width={PET_PX_W} height={PET_PX_H} />
             {seatTag}
           </Box>
         )
       }
       return (
         <Box key={`pet-${hp.id}`} width={petW} flexShrink={0} flexDirection="column">
-          {petRows(frame).map((row, i) => (
+          {petRows(frame, blink).map((row, i) => (
             <Box key={`pet-${hp.id}-r${i}`}>
               <Text color={color}>{row}</Text>
             </Box>

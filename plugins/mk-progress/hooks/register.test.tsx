@@ -220,7 +220,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(agents, 'three spawned').toHaveLength(3)
     const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props() })
     if (surface === 'terminal') {
-      const heads = await v.findAll({ type: 'Text', text: /^ ▐▛███▜▌ $/ })
+      const heads = await v.findAll({ type: 'Text', text: /^ ▐▛█▜▌ $/ })
       expect(heads.map(h => h.props.color), 'opus orange, sonnet blue, haiku teal').toEqual(['#d97757', '#3b82f6', '#12a494'])
       expect(await v.findAll({ type: 'Svg' }), 'no Svg on the terminal').toHaveLength(0)
       const legs = async () => String((await v.find({ key: 'pet-agent-a1-r2' }))?.text)
@@ -247,7 +247,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(String(got[2]!.props.source), 'and a brighter teal on a dark page').toContain('prefers-color-scheme: dark')
     expect(String(got[0]!.props.source).includes('#2b1d16'), 'eyes filled').toBe(true)
     expect(String(got[0]!.props.source).length < 131072, 'under the Svg limit').toBe(true)
-    expect(Number(got[0]!.props.width), 'about 4 columns wide: 18 pixels wide per 9 glyph columns at 1.5 px').toBe(27)
+    expect(Number(got[0]!.props.width), 'about 3 columns wide: 14 pixels at 1.5 px').toBe(21)
     expect(Number(got[0]!.props.height), '6 pixel rows of 3 px').toBe(18)
 
     // Running: the frame changes on the clock tick.
@@ -264,7 +264,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     // The finished crab sits in the Finished group, after the running ones.
     const still = async () => String((await pets()).at(-1)!.props.source)
     const first = await still()
-    expect(first, 'a finished pet stands: the original 9 by 3 glyphs, 18 by 6 pixels').toContain('viewBox="0 0 18 6"')
+    expect(first, 'a finished pet stands: 7 by 3 glyphs, 14 by 6 pixels').toContain('viewBox="0 0 14 6"')
     await clock.advance(600)
     expect(await still(), 'a finished pet is still').toBe(first)
     await clock.advance(600)
@@ -281,7 +281,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props() })
     const seen = async () =>
       surface === 'terminal'
-        ? String((await v.findAll({ type: 'Text', text: /^( ▐▛███▜▌ |▗▐▛███▜▌▖)$/ }))[0]?.props.color)
+        ? String((await v.findAll({ type: 'Text', text: /^( ▐(▛█▜|███)▌ |╹▐(▛█▜|███)▌╹)$/ }))[0]?.props.color)
         : String((await v.findAll({ type: 'Svg' })).find(p => String(p.props.alt).startsWith('Claude crab'))?.props.source)
     const alt = async () => String((await v.findAll({ type: 'Svg' })).find(p => String(p.props.alt).startsWith('Claude crab'))?.props.alt)
     expect(await seen(), 'unknown: stone grey').toContain('#97928e')
@@ -971,7 +971,7 @@ for (const surface of ALL) {
       expect(await v.find({ key: 'card-agent-a2' }), `finished card at ${cols}`).toBeDefined()
       const card = (await v.find({ key: 'card-agent-a1' })) as { props: { width?: number } }
       expect(card.props.width, `card is the pane's width at ${cols}`).toBe(Math.max(32, cols))
-      const pet = surface === 'terminal' ? await v.find({ text: /▐▛███▜▌/ }) : await v.find({ type: 'Svg' })
+      const pet = surface === 'terminal' ? await v.find({ text: /▐▛█▜▌/ }) : await v.find({ type: 'Svg' })
       expect(pet, `pet: glyphs in the terminal, Svg elsewhere (${cols})`).toBeDefined()
       if (surface === 'terminal') expect(await v.find({ type: 'Svg' }), 'no Svg in the terminal').toBeUndefined()
       await v.press({ key: 'steps-agent-a1' })
@@ -1074,37 +1074,40 @@ test('terminal: a running card and a finished or stopped one are 4 rows, and Cla
   // A finished crab stands in frame 0: Clawd as Claude Code draws it.
   for (const id of ['agent-a2', 'agent-a3']) {
     const art = await Promise.all([0, 1, 2].map(async i => (await v.find({ key: `pet-${id}-r${i}` }))?.text))
-    expect(art, `Clawd, glyph for glyph (${id})`).toEqual([' ▐▛███▜▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '])
-    expect(Math.max(...art.map(r => String(r).length)), 'the original 9 columns').toBe(9)
+    expect(art, `Clawd, glyph for glyph (${id})`).toEqual([' ▐▛█▜▌ ', '╶▜███▛╴', ' ╵╵ ╵╵ '])
+    expect(Math.max(...art.map(r => String(r).length)), '7 columns').toBe(7)
   }
   // The two done/stopped bars are full-block lines, the running one a dim heavy track.
   expect(await v.find({ type: 'Text', text: /^█{6,}$/ }), 'done and stopped: thick').toBeDefined()
   expect(await v.find({ type: 'Text', text: /^━+$/ }), 'running: the track').toBeDefined()
 })
 
-test('desktop: the Svg crab lives on the original 18 by 6 pixel grid, differs between frames, and fills its eye holes', { timeoutMs: 30000 }, async ($, on) => {
+test('desktop: the Svg crab lives on a 14 by 6 pixel grid, differs between frames, and fills its eye holes', { timeoutMs: 30000 }, async ($, on) => {
   const { clock } = rig(on, {})
   await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'desktop', isInteractive: true } as never)
   await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'Explore' } as never)
   await clock.settle()
   const v = await $.ui.mount({ plugin: 'mk-progress', surface: 'desktop', component: 'Pane', requestId: 'mk-progress', props: props(48) })
   const sources = new Set<string>()
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < 14; i += 1) {
     const pet = (await v.findAll({ type: 'Svg' })).find(p => String(p.props.alt).startsWith('Claude crab'))!
     sources.add(String(pet.props.source))
     await clock.advance(600)
   }
-  expect(sources.size, 'the four frames differ').toBe(4)
+  expect(sources.size >= 4, 'the four limb frames differ').toBe(true)
   for (const svg of sources) {
-    expect(svg).toContain('viewBox="0 0 18 6"')
-    expect(svg).toContain('width="27" height="18"')
+    expect(svg).toContain('viewBox="0 0 14 6"')
+    expect(svg).toContain('width="21" height="18"')
+    expect(svg, 'thin strokes for the legs').toMatch(/width="0\.5" height="1"/)
     expect(svg).toContain('shape-rendering="crispEdges"')
     const rects = [...svg.matchAll(/<rect (?:class="[^"]*" )?x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)"/g)].map(m => m.slice(1).map(Number) as [number, number, number, number])
     expect(rects.length > 0, 'pixels drawn').toBe(true)
-    for (const [x, y, w, h] of rects) expect(x >= 0 && y >= 0 && x + w <= 18 && y + h <= 6, `rect ${x},${y} ${w}x${h} inside the grid`).toBe(true)
-    expect((svg.match(/fill="#2b1d16"/g) ?? []).length, 'two eye holes, or none when blinking').toBe(2)
+    for (const [x, y, w, h] of rects) expect(x >= 0 && y >= 0 && x + w <= 14 && y + h <= 6, `rect ${x},${y} ${w}x${h} inside the grid`).toBe(true)
+    expect([0, 2], 'two eye holes, or none when blinking').toContain((svg.match(/fill="#2b1d16"/g) ?? []).length)
   }
-  for (const svg of sources) expect((svg.match(/fill="#2b1d16"/g) ?? []).length, 'two eyes in every frame').toBe(2)
+  const eyeCounts = [...sources].map(svg => (svg.match(/fill="#2b1d16"/g) ?? []).length)
+  expect(eyeCounts.every(n => n === 2 || n === 0), 'two eyes, or none on a blink').toBe(true)
+  expect(eyeCounts.includes(2) && eyeCounts.includes(0), 'both open and blinking frames show up').toBe(true)
 })
 
 test('terminal band: a half block ends the fill mid-cell, and no sparkle remains in the Svg band', { timeoutMs: 30000 }, async ($, on) => {
@@ -1227,7 +1230,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
-test('the Svg Clawd is the original 9 by 3 glyphs on an 18 by 6 grid with exactly two eye rects', { timeoutMs: 30000 }, async ($, on) => {
+test('the Svg Clawd is 7 by 3 glyphs on a 14 by 6 grid with exactly two eye rects', { timeoutMs: 30000 }, async ($, on) => {
   const { clock } = rig(on, {})
   await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'desktop', isInteractive: true } as never)
   await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'Explore' } as never)
@@ -1237,7 +1240,7 @@ test('the Svg Clawd is the original 9 by 3 glyphs on an 18 by 6 grid with exactl
   await clock.settle()
   const v = await $.ui.mount({ plugin: 'mk-progress', surface: 'desktop', component: 'Pane', requestId: 'mk-progress', props: props(48) })
   const stand = String((await v.findAll({ type: 'Svg' })).filter(p => String(p.props.alt).startsWith('Claude crab')).at(-1)!.props.source)
-  expect(stand, 'viewBox 18 by 6').toContain('viewBox="0 0 18 6"')
+  expect(stand, 'viewBox 14 by 6').toContain('viewBox="0 0 14 6"')
   expect((stand.match(/fill="#2b1d16"/g) ?? []).length, 'two eyes, not the claws').toBe(2)
 })
 
@@ -1269,7 +1272,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
-test('Clawd: only the claws and the legs move; head, eyes and body are the same in every frame', { timeoutMs: 30000 }, async ($, on) => {
+test('Clawd: only the claws and the legs move; head and body are the same in every frame, and a blink changes the eye cells only', { timeoutMs: 30000 }, async ($, on) => {
   const { clock } = rig(on, {})
   await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'terminal', isInteractive: true } as never)
   await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'Explore' } as never)
@@ -1277,13 +1280,17 @@ test('Clawd: only the claws and the legs move; head, eyes and body are the same 
   const v = await $.ui.mount({ plugin: 'mk-progress', surface: 'terminal', component: 'Pane', requestId: 'mk-progress', props: props(60) })
   const frames = new Set<string>()
   const middles = new Set<string>()
-  for (let i = 0; i < 10; i += 1) {
+  let blinks = 0
+  for (let i = 0; i < 14; i += 1) {
     const rows = await Promise.all([0, 1, 2].map(async r => String((await v.find({ key: `pet-agent-a1-r${r}` }))?.text)))
-    expect(rows.every(r => r.length === 9), 'the original 9 by 3').toBe(true)
-    frames.add(rows.join('|'))
-    middles.add(`${rows[0]!.slice(1, 8)}|${rows[1]!.slice(1, 8)}`)
+    if (rows[0]!.includes('▐███▌')) blinks += 1
+    expect(rows.every(r => r.length === 7), 'the slim 7 by 3').toBe(true)
+    // The eye cells may differ on a blink frame, and only they: with ▛ and ▜ read as full blocks the head and body never change.
+    frames.add([rows[0]!.replace(/[▛▜]/g, '█'), rows[1], rows[2]].join('|'))
+    middles.add(`${rows[0]!.slice(1, 6).replace(/[▛▜]/g, '█')}|${rows[1]!.slice(1, 6)}`)
     await clock.advance(600)
   }
-  expect(frames.size, 'the four frames show up').toBe(4)
-  expect(middles.size, 'head, eyes and body never change').toBe(1)
+  expect(frames.size, 'the four limb frames show up').toBe(4)
+  expect(middles.size, 'head and body never change, eyes aside').toBe(1)
+  expect(blinks > 0 && blinks < 6, 'it blinks briefly, not every cycle').toBe(true)
 })
