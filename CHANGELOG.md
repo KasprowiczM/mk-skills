@@ -6,6 +6,11 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-11-21
+
+### Changed
+- mk-progress 0.9.3: the whole original 9 by 3 Clawd is drawn on every surface (Svg 27 by 18 px); only the claws and legs animate.
+
 ## [0.6.2] - 2026-11-21
 
 ### Changed

@@ -33,9 +33,10 @@ const MAX_STEPS = 200
 const TAG_W = 11
 // The pane asks the dock for this many body columns; the layout works at any width from 32 up.
 const PANE_COLS = 48
-// Columns the pet takes beside a card: the terminal Clawd is 5 wide, plus one gap; the Svg one is 27 CSS
+// Columns the pet takes beside a card: the terminal Clawd is 9 wide, plus one gap; the Svg one is 27 CSS
 // pixels (about 4 columns) wide and the "#N" tag under it is at most 3.
-const PET_W = 6
+const PET_W = 10
+const PET_W_SVG = 5
 // The Svg crab: the 18 by 6 pixel grid of Claude Code's own Clawd, each pixel 1.5 wide and 3 tall (the 1:2 of a terminal quadrant).
 const PET_PX_W = 27
 const PET_PX_H = 18
@@ -117,29 +118,20 @@ const EYE = '#2b1d16'
 const FRAMES = 4
 
 /**
- * The terminal Clawd: a small copy of Claude Code's own, quadrant block glyphs, 5 columns by 2 rows. Row 0 is the
- * head with its two eye holes (▛ and ▜), row 1 the body with its little arms, or the legs when it steps.
- * Frame 0 stands, 1 steps (legs instead of the body), 2 blinks, 3 waves its claws.
+ * Clawd as Claude Code draws it at start-up: quadrant block glyphs, 9 columns by 3 rows. The glyphs are the single
+ * source: the terminal prints them, and the Svg decodes them into an 18 by 6 grid of pixels. Row 0 is the head with
+ * its two eye holes, row 1 the body, row 2 the four legs. Only the claws (columns 0 and 8 of rows 0 and 1) and the
+ * legs move; the head, eyes and body (columns 1 to 7 of rows 0 and 1) are the same in every frame.
+ * Frame 0 stands, 1 steps (legs apart), 2 raises its claws, 3 raises them and steps.
  */
-const CLAWD: readonly (readonly [string, string])[] = [
-  ['▐▛█▜▌', '▝▜█▛▘'],
-  ['▐▛█▜▌', ' ▘▘▝▝'],
-  ['▐███▌', '▝▜█▛▘'],
-  ['▗▛█▜▖', ' ▜█▛ '],
-]
-
-/**
- * The Svg Clawd is built from the original 9 by 3 glyphs of the Claude Code start-up screen, so its shape is
- * exactly the crab's: an 18 by 6 pixel grid with two eye holes in the head row.
- */
-const CLAWD_SVG: readonly (readonly [string, string, string])[] = [
+const CLAWD: readonly (readonly [string, string, string])[] = [
   [' ▐▛███▜▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '],
   [' ▐▛███▜▌ ', '▝▜█████▛▘', ' ▘ ▘ ▝ ▝ '],
-  [' ▐█████▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '],
   ['▗▐▛███▜▌▖', ' ▜█████▛ ', '  ▘▘ ▝▝  '],
+  ['▗▐▛███▜▌▖', ' ▜█████▛ ', ' ▘ ▘ ▝ ▝ '],
 ]
 
-/** The two rows of a pet: a running one walks through the frames, a finished one stands in frame 0. */
+/** The three rows of a pet: a running one walks through the frames, a finished one stands in frame 0. */
 const petRows = (frame: number): string[] => [...CLAWD[((frame % FRAMES) + FRAMES) % FRAMES]!]
 
 // Which quarters of a cell a quadrant glyph fills: top left, top right, bottom left, bottom right.
@@ -167,7 +159,7 @@ function petSvg(color: string, frame: number) {
   const key = `${color}:${frame % FRAMES}`
   const hit = petCache.get(key)
   if (hit) return hit
-  const rows: string[] = [...CLAWD_SVG[((frame % FRAMES) + FRAMES) % FRAMES]!]
+  const rows = petRows(frame)
   const W = rows[0]!.length * 2
   const H = rows.length * 2
   const grid: number[][] = Array.from({ length: H }, () => Array<number>(W).fill(0))
@@ -1348,7 +1340,8 @@ export const register: Register = on => {
     const { value: cost = { usd: null } } = await $.state.get(COST)
     const width = Math.max(32, e.props.bodyColumns)
     // Beside a card's pet: the text column.
-    const cw = width - PET_W
+    const petW = Svg ? PET_W_SVG : PET_W
+    const cw = width - petW
 
     const running = list.filter(hp => hp.phase === 'working')
     const finished = list.filter(hp => hp.phase === 'done')
@@ -1398,14 +1391,14 @@ export const register: Register = on => {
       const seatTag = <Text key={`seat-${hp.id}`} dimColor>{`#${hp.seat + 1}`}</Text>
       if (Svg) {
         return (
-          <Box key={`pet-${hp.id}`} width={PET_W} flexShrink={0} flexDirection="column" justifyContent="center">
+          <Box key={`pet-${hp.id}`} width={petW} flexShrink={0} flexDirection="column" justifyContent="center">
             <Svg source={petSvg(color, frame)} alt={`Claude crab, ${familyName(hp.model)}`} width={PET_PX_W} height={PET_PX_H} />
             {seatTag}
           </Box>
         )
       }
       return (
-        <Box key={`pet-${hp.id}`} width={PET_W} flexShrink={0} flexDirection="column">
+        <Box key={`pet-${hp.id}`} width={petW} flexShrink={0} flexDirection="column">
           {petRows(frame).map((row, i) => (
             <Box key={`pet-${hp.id}-r${i}`}>
               <Text color={color}>{row}</Text>

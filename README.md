@@ -20,7 +20,7 @@ Mods are Claude Code plugins. They install through `/plugin`, not through `insta
 
 | Mod | What it does | Version |
 |---|---|---|
-| [`mk-progress`](plugins/mk-progress/README.md) | A Claude Code mod: a side pane with live subagent cards (Clawd crab coloured by model, steps, time, tokens, cost) and a plan progress bar above the prompt. | 0.9.2 |
+| [`mk-progress`](plugins/mk-progress/README.md) | A Claude Code mod: a side pane with live subagent cards (Clawd crab coloured by model, steps, time, tokens, cost) and a plan progress bar above the prompt. | 0.9.3 |
 
 ```
 /plugin marketplace add KasprowiczM/mk-skills
