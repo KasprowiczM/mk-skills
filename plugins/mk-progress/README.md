@@ -47,7 +47,7 @@ Or from a shell: `claude plugin marketplace add KasprowiczM/mk-skills` then `cla
 **Terminal (CLI)**
 
 1. `claude plugin list` shows `mk-progress@mk-skills` at 0.9.5 and enabled. Start `claude` (or run `/reload-plugins`).
-2. Ask: "Make a 3-step plan with the progress tool, then do it: list files in /tmp, count them, print the count." The purple bar appears above the prompt and fills; ✕ hides it.
+2. Ask: "Make a 3-step plan with the progress tool, then do it: list files in /tmp, count them, print the count." The bar appears above the prompt and fills; ✕ hides it.
 3. Ask for two parallel subagents ("use two Explore agents to look at ..."). Type `/mk-progress` (a narrow terminal does not seat the pane by itself): cards show model, effort, tokens; the top rows show tokens and cost per model.
 4. Narrow the window to about 80 columns and then 40: the bar drops its percent, then its title, and never wraps.
 

@@ -16,16 +16,41 @@ Adding a skill later is one new folder under `skills/` plus one row above.
 
 ## Mods
 
-Mods are Claude Code plugins. They install through `/plugin`, not through `install.sh` (which handles skills only), and need a Claude Code build with mods and plugin hooks.
+Mods are Claude Code plugins that change Claude's own interface. They need a Claude Code build with mods and plugin hooks, and install only through the plugin marketplace (see below), not through `install.sh`.
 
 | Mod | What it does | Version |
 |---|---|---|
-| [`mk-progress`](plugins/mk-progress/README.md) | A Claude Code mod: a side pane with live subagent cards (Clawd crab coloured by model, steps, time, tokens, cost) and a plan progress bar above the prompt. | 0.9.5 |
+| [`mk-progress`](plugins/mk-progress/README.md) | A Claude Code mod: a side pane with live subagent cards (Clawd crab coloured by model, steps, time, tokens, cost) and a task progress bar above the prompt. | 0.9.5 |
+
+## Claude Code: plugins
+
+This repository is one Claude Code plugin marketplace, `mk-skills`. Every skill (`mk-boss`, `mk-prompt`) and every mod (`mk-progress`) is a plugin in it, so you can install all of them or only the ones you pick. Plugin skills are invoked as `/<plugin>:<skill>`, for example `/mk-boss:mk-boss`.
 
 ```
 /plugin marketplace add KasprowiczM/mk-skills
+/plugin install mk-boss@mk-skills
+/plugin install mk-prompt@mk-skills
 /plugin install mk-progress@mk-skills
 ```
+
+Or from a shell, with the helper script (installs at user scope):
+
+```bash
+git clone https://github.com/KasprowiczM/mk-skills.git && cd mk-skills
+scripts/claude-plugins.sh list
+scripts/claude-plugins.sh install all            # or: install mk-boss mk-progress
+scripts/claude-plugins.sh update all             # refresh the marketplace and the plugins
+```
+
+**Update.** `/plugin marketplace update mk-skills` then `/plugin update <name>@mk-skills` (or the script's `update`). Skill plugins carry no version, so every commit pushed to `main` is an update; `mk-progress` updates when its version in `plugin.json` changes. Restart Claude Code or run `/reload-plugins`.
+
+**Auto-update.** Open `/plugin`, go to Marketplaces, pick `mk-skills` and enable auto-update, or set it in `~/.claude/settings.json`:
+
+```json
+{ "extraKnownMarketplaces": { "mk-skills": { "source": { "source": "github", "repo": "KasprowiczM/mk-skills" }, "autoUpdate": true } } }
+```
+
+The next sections (`install.sh`) are for Codex, Antigravity, Cursor, or Claude Code without plugins.
 
 ## Requirements
 

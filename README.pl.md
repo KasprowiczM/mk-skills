@@ -16,16 +16,41 @@ Dodanie skilla to jeden nowy folder w `skills/` i jeden wiersz w tabeli.
 
 ## Mody
 
-Mody to wtyczki Claude Code. Instaluje się je przez `/plugin`, nie przez `install.sh` (ten obsługuje tylko skille), i wymagają wersji Claude Code z obsługą modów i hooków wtyczek.
+Mody to wtyczki Claude Code zmieniające interfejs samego Claude. Wymagają wersji Claude Code z obsługą modów i hooków wtyczek i instalują się wyłącznie przez marketplace wtyczek (niżej), nie przez `install.sh`.
 
 | Mod | Co robi | Wersja |
 |---|---|---|
-| [`mk-progress`](plugins/mk-progress/README.md) | Mod do Claude Code: boczny panel z kartami subagentów na żywo (krab Clawd w kolorze modelu, kroki, czas, tokeny, koszt) i pasek postępu planu nad promptem. | 0.9.5 |
+| [`mk-progress`](plugins/mk-progress/README.md) | Mod do Claude Code: boczny panel z kartami subagentów na żywo (krab Clawd w kolorze modelu, kroki, czas, tokeny, koszt) i pasek postępu zadań nad promptem. | 0.9.5 |
+
+## Claude Code: wtyczki
+
+To repozytorium jest jednym marketplace'em wtyczek Claude Code, `mk-skills`. Każdy skill (`mk-boss`, `mk-prompt`) i każdy mod (`mk-progress`) jest w nim wtyczką, więc instalujesz wszystko albo tylko wybrane. Skille wtyczek wywołuje się jako `/<wtyczka>:<skill>`, np. `/mk-boss:mk-boss`.
 
 ```
 /plugin marketplace add KasprowiczM/mk-skills
+/plugin install mk-boss@mk-skills
+/plugin install mk-prompt@mk-skills
 /plugin install mk-progress@mk-skills
 ```
+
+Albo z powłoki, skryptem pomocniczym (zakres user):
+
+```bash
+git clone https://github.com/KasprowiczM/mk-skills.git && cd mk-skills
+scripts/claude-plugins.sh list
+scripts/claude-plugins.sh install all            # albo: install mk-boss mk-progress
+scripts/claude-plugins.sh update all             # odśwież marketplace i wtyczki
+```
+
+**Aktualizacja.** `/plugin marketplace update mk-skills`, potem `/plugin update <nazwa>@mk-skills` (albo `update` ze skryptu). Wtyczki ze skilli nie mają wersji, więc każdy commit na `main` to aktualizacja; `mk-progress` aktualizuje się, gdy zmieni się wersja w `plugin.json`. Zrestartuj Claude Code lub użyj `/reload-plugins`.
+
+**Automatyczna aktualizacja.** W `/plugin` wejdź w Marketplaces, wybierz `mk-skills` i włącz auto-update, albo ustaw w `~/.claude/settings.json`:
+
+```json
+{ "extraKnownMarketplaces": { "mk-skills": { "source": { "source": "github", "repo": "KasprowiczM/mk-skills" }, "autoUpdate": true } } }
+```
+
+Kolejne sekcje (`install.sh`) dotyczą Codex, Antigravity, Cursora albo Claude Code bez wtyczek.
 
 ## Wymagania
 

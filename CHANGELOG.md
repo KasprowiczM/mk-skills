@@ -6,6 +6,17 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-21
+
+### Added
+- Every skill is now a Claude Code plugin in the same marketplace: `mk-boss` and `mk-prompt` (root-source entries listing `./skills/<name>`, no file duplication, no version so each push is an update).
+- `scripts/claude-plugins.sh` (install, update, list for chosen or all plugins) and `scripts/check.sh` (validate, test the mod, match skills to marketplace entries).
+- CONTRIBUTING: checklists for adding a skill and a mod, version rules, how publishing works.
+- README (EN, PL): one "Claude Code: plugins" section with install, update and auto-update.
+
+### Changed
+- mk-progress now lives only in this repo (standalone repo retired); its README is the full mod README, installation via this marketplace; version kept only in `plugin.json`; description corrected (task bar in the Cache style, no longer purple).
+
 ## [0.6.5] - 2026-11-21
 
 ### Changed
