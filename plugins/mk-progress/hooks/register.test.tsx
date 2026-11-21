@@ -220,7 +220,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(agents, 'three spawned').toHaveLength(3)
     const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props() })
     if (surface === 'terminal') {
-      const heads = await v.findAll({ type: 'Text', text: /^▟▛█▜▙$/ })
+      const heads = await v.findAll({ type: 'Text', text: /^▐▛█▜▌$/ })
       expect(heads.map(h => h.props.color), 'opus orange, sonnet blue, haiku teal').toEqual(['#d97757', '#3b82f6', '#12a494'])
       expect(await v.findAll({ type: 'Svg' }), 'no Svg on the terminal').toHaveLength(0)
       const legs = async () => String((await v.find({ key: 'pet-agent-a1-r1' }))?.text)
@@ -247,8 +247,8 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(String(got[2]!.props.source), 'and a brighter teal on a dark page').toContain('prefers-color-scheme: dark')
     expect(String(got[0]!.props.source).includes('#2b1d16'), 'eyes filled').toBe(true)
     expect(String(got[0]!.props.source).length < 131072, 'under the Svg limit').toBe(true)
-    expect(Number(got[0]!.props.width), 'about 5 columns wide').toBe(32)
-    expect(Number(got[0]!.props.height), 'two text rows tall').toBe(32)
+    expect(Number(got[0]!.props.width), 'about 4 columns wide: 18 pixels wide per 9 glyph columns at 1.5 px').toBe(27)
+    expect(Number(got[0]!.props.height), '6 pixel rows of 3 px').toBe(18)
 
     // Running: the frame changes on the clock tick.
     const frames = new Set<string>()
@@ -264,7 +264,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     // The finished crab sits in the Finished group, after the running ones.
     const still = async () => String((await pets()).at(-1)!.props.source)
     const first = await still()
-    expect(first, 'a finished pet stands: two rows, 10 by 4 pixels').toContain('viewBox="0 0 10 4"')
+    expect(first, 'a finished pet stands: the original 9 by 3 glyphs, 18 by 6 pixels').toContain('viewBox="0 0 18 6"')
     await clock.advance(600)
     expect(await still(), 'a finished pet is still').toBe(first)
     await clock.advance(600)
@@ -281,7 +281,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props() })
     const seen = async () =>
       surface === 'terminal'
-        ? String((await v.findAll({ type: 'Text', text: /^(▟(▛█▜|███)▙|█▛█▜█)$/ }))[0]?.props.color)
+        ? String((await v.findAll({ type: 'Text', text: /^(▐(▛█▜|███)▌|▗▛█▜▖)$/ }))[0]?.props.color)
         : String((await v.findAll({ type: 'Svg' })).find(p => String(p.props.alt).startsWith('Claude crab'))?.props.source)
     const alt = async () => String((await v.findAll({ type: 'Svg' })).find(p => String(p.props.alt).startsWith('Claude crab'))?.props.alt)
     expect(await seen(), 'unknown: stone grey').toContain('#97928e')
@@ -535,8 +535,8 @@ for (const surface of ['desktop', 'terminal'] as const) {
       const bars = (await v.findAll({ type: 'Svg' })).filter(b => b.props.alt === 'Working')
       expect(bars, 'one bar per card').toHaveLength(2)
       const src = String(bars[0]!.props.source)
-      expect(src, 'working: a thin 2 px track').toContain('height="2"')
-      expect(src, 'working: a 4 px piece').toContain('height="4"')
+      expect(src, 'working: a 6 px track').toContain('height="6"')
+      expect(src, 'working: an 8 px piece').toContain('height="8"')
       expect(src, 'the piece glides').toContain('@keyframes mv0')
       expect(src, 'with a highlight').toContain('@keyframes gl0')
       expect(src, 'no dither sparkles').not.toContain('class="s0"')
@@ -547,19 +547,18 @@ for (const surface of ['desktop', 'terminal'] as const) {
       const done = String((await v.findAll({ type: 'Svg' })).find(b => b.props.alt === 'Done')?.props.source)
       expect(done, 'done: full green line').toContain('#16a34a')
       expect(done, 'done: still').not.toContain('@keyframes mv')
-      expect(done, 'done: a thick 6 px line').toContain('height="6"')
-      expect(done, 'done and working differ in thickness').not.toContain('height="2"')
+      expect(done, 'done: a solid 18 px line, 3 times the 6 px track').toMatch(/<rect width="\d+" height="18"/)
+      expect(done, 'done and working differ in thickness').not.toContain('height="6"')
       expect(String((await v.findAll({ type: 'Svg' })).find(b => b.props.alt === 'Stopped')?.props.source), 'stopped: full red line').toContain('#dc2626')
       return
     }
-    // The terminal: a slim heavy line, no thick blocks.
+    // The terminal: a dim heavy track with a bright piece while it works, a full block line when over.
     expect(await v.find({ key: 'bar-agent-a1' }), 'the card has a bar').toBeDefined()
-    expect(await v.find({ type: 'Text', text: /^[█░▓]{4,}$/ }), 'no thick block bar').toBeUndefined()
-    expect(await v.find({ type: 'Text', text: /^─+$/ }), 'working: the track is the thin glyph').toBeDefined()
-    expect(await v.find({ type: 'Text', text: /^━{6,}$/ }), 'done and stopped: a thick solid line').toBeDefined()
-    expect(await v.find({ type: 'Text', text: /^[╺━╸]$/ }), 'a capped piece').toBeDefined()
-    const place = async () => ((await v.find({ key: 'bar-agent-a1' })) as { text: string } | undefined)?.text.indexOf('╺')
-    const seen = new Set<number | undefined>()
+    expect(await v.find({ type: 'Text', text: /^─+$/ }), 'no thin line any more').toBeUndefined()
+    expect(await v.find({ type: 'Text', text: /^━+$/ }), 'working: a dim heavy track').toBeDefined()
+    expect((await v.findAll({ type: 'Text', text: /^━$/ })).some(t => t.props.color === '#d97757' || t.props.color === 'text'), 'working: a bright piece of the same glyph').toBe(true)
+    const place = async () => (await v.findAll({ type: 'Text', text: /^━+$/ })).filter(t => t.props.dimColor).map(t => String(t.text).length).join(',')
+    const seen = new Set<string>()
     for (let i = 0; i < 6; i += 1) {
       seen.add(await place())
       await clock.advance(300)
@@ -570,6 +569,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     await clock.settle()
     const lineColor = async (id: string) => ((await v.find({ key: `bar-${id}` })) as { children: { props: { color?: string } }[] } | undefined)?.children[0]?.props.color
     expect(await lineColor('agent-a1'), 'done: green line').toBe('#16a34a')
+    expect(await v.find({ type: 'Text', text: /^█{6,}$/ }), 'done and stopped: a thick solid line of full blocks').toBeDefined()
     expect(await lineColor('agent-a2'), 'stopped: red line').toBe('#dc2626')
   })
 
@@ -630,33 +630,34 @@ for (const surface of ['desktop', 'terminal'] as const) {
       const svg = String((await v.find({ type: 'Svg' }))!.props.source)
       expect(svg, 'purple gradient').toContain('#6d28d9')
       expect(svg, 'no dither sparkles').not.toContain('class="s0"')
-      expect(svg, 'a highlight sweeps the fill').toContain('class="sh"')
-      expect(svg, 'the step in progress glows').toContain('class="lv"')
-      expect(svg, 'and a shine runs along it').toContain('class="lw"')
-      expect(svg, 'done is thick').toContain('height="8"')
-      expect(svg, 'in progress and the rest are thin').toContain('height="3"')
+      expect(svg, 'no shimmer on the fill').not.toContain('class="sh"')
+      expect(svg, 'no separate glow segment').not.toContain('class="lv"')
+      expect(svg, 'a bright piece glides over the unfinished part').toContain('class="mp"')
+      expect(svg, 'reduced motion stops it').toContain('prefers-reduced-motion')
+      expect(svg, 'the unfinished track is 8 px').toMatch(/class="k" y="10" width="\d+" height="8"/)
+      expect(svg, 'the finished fill is 24 px, 3 times that').toMatch(/<rect y="2" width="\d+" height="24"[^>]*fill="url\(#hdb-g\)"/)
+      expect(svg, 'the piece is as thick as the track').toMatch(/class="mp" x="\d+" y="10" width="\d+" height="8"/)
+      const fillW = Number(/<rect y="2" width="(\d+)" height="24"/.exec(svg)![1])
+      expect(Number(/class="mp" x="(\d+)"/.exec(svg)![1]), 'the piece starts where the fill ends').toBe(fillW)
+      expect(svg, 'tick marks stay on the unfinished track').toContain('class="tk"')
     } else {
-      expect(await v.find({ text: /[█▓░]/ }), 'no thick blocks in the bar').toBeUndefined()
-      const cellsNow = async () => ((await v.findAll({ type: 'Text', text: /^[━─]$/ })) as { props: { color?: string } }[]).filter(c => c.props.color)
-      const cells = await cellsNow()
-      // Half the bar is fill (a cap ends it mid-cell at this width), then the step in progress up to 3/4.
-      const FILL = 21
-      expect(cells.length, 'fill and in-progress cells').toBeGreaterThan(FILL)
-      expect(['#9f7aea', 'text'], 'light purple at the start (or the pulse)').toContain(cells[0]!.props.color)
-      expect(['#8146de', 'text'], 'deep purple at the head (or the pulse)').toContain(cells[FILL - 1]!.props.color)
-      expect((await v.find({ type: 'Text', text: /^╸$/ }))?.props.color, 'half cap at the head').toBe('#8146de')
-      expect(await v.find({ type: 'Text', text: /^─+$/ }), 'the dim track is the thin glyph').toBeDefined()
-      expect(await v.find({ type: 'Text', text: /^─$/ }), 'the in-progress segment is thin too').toBeDefined()
-      const pulseAt = new Set<number>()
-      const glow = new Set<string>()
+      const fill = async () => ((await v.findAll({ type: 'Text', text: /^█$/ })) as { props: { color?: string } }[]).map(c => c.props.color)
+      const cells = await fill()
+      expect(cells.length > 10, 'the finished part is thick full blocks').toBe(true)
+      expect(cells[0], 'light purple at the start').toBe('#9f7aea')
+      expect(cells[cells.length - 1], 'deep purple at the head').toBe('#8146de')
+      expect((await v.find({ type: 'Text', text: /^▌$/ }))?.props.color, 'half block at the head').toBe('#8146de')
+      expect(await v.find({ type: 'Text', text: /^━+$/ }), 'the unfinished track is the dim heavy line').toBeDefined()
+      expect((await v.findAll({ type: 'Text', text: /^━$/ })).filter(t => t.props.color === 'text'), 'a piece of 3 bright cells').toHaveLength(3)
+      const pieceAt = new Set<string>()
+      const fills = new Set<string>()
       for (let i = 0; i < 10; i += 1) {
-        const now = await cellsNow()
-        pulseAt.add(now.slice(0, FILL).findIndex(c => c.props.color === 'text'))
-        glow.add(now.slice(FILL).map(c => c.props.color).join(''))
+        pieceAt.add((await v.findAll({ type: 'Text', text: /^━+$/ })).filter(t => t.props.dimColor).map(t => String(t.text).length).join(','))
+        fills.add((await fill()).join(''))
         await clock.advance(350)
       }
-      expect(pulseAt.size > 3, 'the pulse travels along the fill').toBe(true)
-      expect(glow.size > 1, 'the step in progress shimmers').toBe(true)
+      expect(pieceAt.size > 3, 'the piece glides over the unfinished cells').toBe(true)
+      expect(fills.size, 'the finished part is static').toBe(1)
     }
 
     // The bar follows the plan, not subagents: a running subagent adds nothing to it.
@@ -929,7 +930,7 @@ for (const surface of ALL) {
         const l = bandLayout(cols - 2, 'Make the deck'.length, 'Tasks 2/4'.length, '50%'.length)
         const glyphs = ((await v.find({ key: 'plan-bar' })) as { text: string } | undefined)?.text ?? ''
         expect(glyphs.length, `bar glyphs at ${cols} columns`).toBe(l.barW)
-        expect(/^[━╸─]*$/.test(glyphs), 'one slim line, no blocks').toBe(true)
+        expect(/^[█▌━]*$/.test(glyphs), 'full blocks done, heavy line to do').toBe(true)
         expect(await v.find({ type: 'Svg' }), 'the terminal has no Svg').toBeUndefined()
         expect(await v.find({ text: /^50%$/ }) !== undefined, `percent shown only where it fits (${cols})`).toBe(l.showPct)
       }
@@ -970,7 +971,7 @@ for (const surface of ALL) {
       expect(await v.find({ key: 'card-agent-a2' }), `finished card at ${cols}`).toBeDefined()
       const card = (await v.find({ key: 'card-agent-a1' })) as { props: { width?: number } }
       expect(card.props.width, `card is the pane's width at ${cols}`).toBe(Math.max(32, cols))
-      const pet = surface === 'terminal' ? await v.find({ text: /▟▛█▜▙/ }) : await v.find({ type: 'Svg' })
+      const pet = surface === 'terminal' ? await v.find({ text: /▐▛█▜▌/ }) : await v.find({ type: 'Svg' })
       expect(pet, `pet: glyphs in the terminal, Svg elsewhere (${cols})`).toBeDefined()
       if (surface === 'terminal') expect(await v.find({ type: 'Svg' }), 'no Svg in the terminal').toBeUndefined()
       await v.press({ key: 'steps-agent-a1' })
@@ -1073,14 +1074,15 @@ test('terminal: a running card and a finished or stopped one are 4 rows, and Cla
   // A finished crab stands in frame 0: Clawd as Claude Code draws it.
   for (const id of ['agent-a2', 'agent-a3']) {
     const art = await Promise.all([0, 1].map(async i => (await v.find({ key: `pet-${id}-r${i}` }))?.text))
-    expect(art, `Clawd, glyph for glyph (${id})`).toEqual(['▟▛█▜▙', ' ▘▘▝▝'])
+    expect(art, `Clawd, glyph for glyph (${id})`).toEqual(['▐▛█▜▌', '▝▜█▛▘'])
+    expect(Math.max(...art.map(r => String(r).length)), 'at most 5 columns wide').toBeLessThanOrEqual(5)
   }
-  // The pane holds no thick block bar, and the two done/stopped bars are full lines.
-  expect(await v.find({ text: /[█]{6,}|░/ }), 'no thick bars').toBeUndefined()
-  expect(await v.find({ type: 'Text', text: /^━+$/ }), 'a slim line').toBeDefined()
+  // The two done/stopped bars are full-block lines, the running one a dim heavy track.
+  expect(await v.find({ type: 'Text', text: /^█{6,}$/ }), 'done and stopped: thick').toBeDefined()
+  expect(await v.find({ type: 'Text', text: /^━+$/ }), 'running: the track').toBeDefined()
 })
 
-test('desktop: the Svg crab lives on a 10 by 4 pixel grid, differs between frames, and fills its eye holes', { timeoutMs: 30000 }, async ($, on) => {
+test('desktop: the Svg crab lives on the original 18 by 6 pixel grid, differs between frames, and fills its eye holes', { timeoutMs: 30000 }, async ($, on) => {
   const { clock } = rig(on, {})
   await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'desktop', isInteractive: true } as never)
   await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'Explore' } as never)
@@ -1094,26 +1096,27 @@ test('desktop: the Svg crab lives on a 10 by 4 pixel grid, differs between frame
   }
   expect(sources.size, 'the four frames differ').toBe(4)
   for (const svg of sources) {
-    expect(svg).toContain('viewBox="0 0 10 4"')
+    expect(svg).toContain('viewBox="0 0 18 6"')
+    expect(svg).toContain('width="27" height="18"')
     expect(svg).toContain('shape-rendering="crispEdges"')
     const rects = [...svg.matchAll(/<rect (?:class="[^"]*" )?x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)"/g)].map(m => m.slice(1).map(Number) as [number, number, number, number])
     expect(rects.length > 0, 'pixels drawn').toBe(true)
-    for (const [x, y, w, h] of rects) expect(x >= 0 && y >= 0 && x + w <= 10 && y + h <= 4, `rect ${x},${y} ${w}x${h} inside the grid`).toBe(true)
-    expect((svg.match(/fill="#2b1d16"/g) ?? []).length, 'two eye holes, or none when blinking').toBe(svg.includes('x="3" y="1" width="1" height="1" fill="#2b1d16"') ? 2 : 0)
+    for (const [x, y, w, h] of rects) expect(x >= 0 && y >= 0 && x + w <= 18 && y + h <= 6, `rect ${x},${y} ${w}x${h} inside the grid`).toBe(true)
+    expect((svg.match(/fill="#2b1d16"/g) ?? []).length, 'two eye holes, or none when blinking').toBe(svg.includes('x="5" y="1" width="1" height="1" fill="#2b1d16"') ? 2 : 0)
   }
   const blink = [...sources].filter(s => !s.includes('#2b1d16'))
   expect(blink.length, 'only the blinking frame has no eyes').toBe(1)
 })
 
-test('terminal band: a half cap ends the fill mid-cell, and no sparkle remains in the Svg band', { timeoutMs: 30000 }, async ($, on) => {
+test('terminal band: a half block ends the fill mid-cell, and no sparkle remains in the Svg band', { timeoutMs: 30000 }, async ($, on) => {
   const { clock } = rig(on, {})
   await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'terminal', isInteractive: true } as never)
   const callTool = $.tool.call as unknown as (input: unknown) => Promise<unknown>
   await callTool({ tool: 'mcp__mk-progress__plan', tool_use_id: 'p1', title: 'Three', steps: [{ text: 'a', status: 'completed' }, { text: 'b', status: 'in_progress' }, { text: 'c', status: 'pending' }] })
   await clock.settle()
   const v = await $.ui.mount({ plugin: 'mk-progress', surface: 'terminal', component: 'AbovePrompt', props: bandProps(80) })
-  const cap = await v.find({ type: 'Text', text: /^╸$/ })
-  expect(cap?.props.color, 'half cap in deep purple').toBe('#8146de')
+  const cap = await v.find({ type: 'Text', text: /^▌$/ })
+  expect(cap?.props.color, 'half block in deep purple').toBe('#8146de')
 })
 
 // ---------- Colours that read on a light page and on a dark one ----------
@@ -1225,7 +1228,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
-test('Clawd is 5 by 2 glyphs, four frames, and the Svg is a 10 by 4 grid with exactly two eye rects', { timeoutMs: 30000 }, async ($, on) => {
+test('the Svg Clawd is the original 9 by 3 glyphs on an 18 by 6 grid with exactly two eye rects', { timeoutMs: 30000 }, async ($, on) => {
   const { clock } = rig(on, {})
   await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'desktop', isInteractive: true } as never)
   await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'Explore' } as never)
@@ -1235,7 +1238,7 @@ test('Clawd is 5 by 2 glyphs, four frames, and the Svg is a 10 by 4 grid with ex
   await clock.settle()
   const v = await $.ui.mount({ plugin: 'mk-progress', surface: 'desktop', component: 'Pane', requestId: 'mk-progress', props: props(48) })
   const stand = String((await v.findAll({ type: 'Svg' })).filter(p => String(p.props.alt).startsWith('Claude crab')).at(-1)!.props.source)
-  expect(stand, 'viewBox 10 by 4').toContain('viewBox="0 0 10 4"')
+  expect(stand, 'viewBox 18 by 6').toContain('viewBox="0 0 18 6"')
   expect((stand.match(/fill="#2b1d16"/g) ?? []).length, 'two eyes, not the claws').toBe(2)
 })
 

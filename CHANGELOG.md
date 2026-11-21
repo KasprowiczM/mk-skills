@@ -6,6 +6,11 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-21
+
+### Changed
+- mk-progress 0.9.1: Clawd crab redrawn from the original frames (27 by 18 px in Svg, a redesigned 5 by 2 copy in the terminal); one thickness rule for bars (task bar 8 px, finished 24 px, static; card bars 6 px working, 18 px done); animation only over the unfinished part.
+
 ## [0.6.0] - 2026-11-21
 
 ### Changed

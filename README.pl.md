@@ -20,7 +20,7 @@ Mody to wtyczki Claude Code. Instaluje się je przez `/plugin`, nie przez `insta
 
 | Mod | Co robi | Wersja |
 |---|---|---|
-| [`mk-progress`](plugins/mk-progress/README.md) | Mod do Claude Code: boczny panel z kartami subagentów na żywo (krab Clawd w kolorze modelu, kroki, czas, tokeny, koszt) i pasek postępu planu nad promptem. | 0.9.0 |
+| [`mk-progress`](plugins/mk-progress/README.md) | Mod do Claude Code: boczny panel z kartami subagentów na żywo (krab Clawd w kolorze modelu, kroki, czas, tokeny, koszt) i pasek postępu planu nad promptem. | 0.9.1 |
 
 ```
 /plugin marketplace add KasprowiczM/mk-skills

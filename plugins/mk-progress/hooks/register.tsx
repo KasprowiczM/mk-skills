@@ -33,13 +33,14 @@ const MAX_STEPS = 200
 const TAG_W = 11
 // The pane asks the dock for this many body columns; the layout works at any width from 32 up.
 const PANE_COLS = 48
-// Columns the pet takes beside a card: Clawd is 5 wide, plus one gap. The Svg is 32 CSS pixels wide
-// (about 6.5 a column) and 16 tall for each text row, so it reads like the terminal glyphs.
+// Columns the pet takes beside a card: the terminal Clawd is 5 wide, plus one gap; the Svg one is 27 CSS
+// pixels (about 4 columns) wide and the "#N" tag under it is at most 3.
 const PET_W = 6
-const PET_PX_W = 32
+// The Svg crab: the 18 by 6 pixel grid of Claude Code's own Clawd, each pixel 1.5 wide and 3 tall (the 1:2 of a terminal quadrant).
+const PET_PX_W = 27
+const PET_PX_H = 18
 // A collapsed card shows this many earlier steps under the current one.
 const HISTORY = 3
-const PET_PX_ROW = 16
 // A running pet changes frame every second tick: about every 600 ms.
 const FRAME_TICKS = 2
 
@@ -116,16 +117,26 @@ const EYE = '#2b1d16'
 const FRAMES = 4
 
 /**
- * A small Clawd: quadrant block glyphs, 5 columns by 2 rows. The glyphs are the single source: the terminal
- * prints them, and the Svg decodes them into a 10 by 4 grid of pixels. Row 0 is the claws and the head with
- * its two eye holes (the ▛ and ▜ in columns 1 and 3), row 1 the little legs.
- * Frame 0 stands, 1 steps (legs apart), 2 blinks, 3 waves its claws.
+ * The terminal Clawd: a small copy of Claude Code's own, quadrant block glyphs, 5 columns by 2 rows. Row 0 is the
+ * head with its two eye holes (▛ and ▜), row 1 the body with its little arms, or the legs when it steps.
+ * Frame 0 stands, 1 steps (legs instead of the body), 2 blinks, 3 waves its claws.
  */
 const CLAWD: readonly (readonly [string, string])[] = [
-  ['▟▛█▜▙', ' ▘▘▝▝'],
-  ['▟▛█▜▙', '▘▘ ▝▝'],
-  ['▟███▙', ' ▘▘▝▝'],
-  ['█▛█▜█', ' ▘▘▝▝'],
+  ['▐▛█▜▌', '▝▜█▛▘'],
+  ['▐▛█▜▌', ' ▘▘▝▝'],
+  ['▐███▌', '▝▜█▛▘'],
+  ['▗▛█▜▖', ' ▜█▛ '],
+]
+
+/**
+ * The Svg Clawd is built from the original 9 by 3 glyphs of the Claude Code start-up screen, so its shape is
+ * exactly the crab's: an 18 by 6 pixel grid with two eye holes in the head row.
+ */
+const CLAWD_SVG: readonly (readonly [string, string, string])[] = [
+  [' ▐▛███▜▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '],
+  [' ▐▛███▜▌ ', '▝▜█████▛▘', ' ▘ ▘ ▝ ▝ '],
+  [' ▐█████▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '],
+  ['▗▐▛███▜▌▖', ' ▜█████▛ ', '  ▘▘ ▝▝  '],
 ]
 
 /** The two rows of a pet: a running one walks through the frames, a finished one stands in frame 0. */
@@ -151,12 +162,12 @@ const QUAD: Record<string, [number, number, number, number]> = {
 
 const petCache = new Map<string, string>()
 
-/** The pet as an Svg on a 10 by 4 pixel grid, built from the glyph rows. */
+/** The pet as an Svg on an 18 by 6 pixel grid, built from the original glyph rows. */
 function petSvg(color: string, frame: number) {
   const key = `${color}:${frame % FRAMES}`
   const hit = petCache.get(key)
   if (hit) return hit
-  const rows = petRows(frame)
+  const rows: string[] = [...CLAWD_SVG[((frame % FRAMES) + FRAMES) % FRAMES]!]
   const W = rows[0]!.length * 2
   const H = rows.length * 2
   const grid: number[][] = Array.from({ length: H }, () => Array<number>(W).fill(0))
@@ -167,9 +178,9 @@ function petSvg(color: string, frame: number) {
       q.forEach((on, k) => {
         if (on) grid[r * 2 + (k >> 1)]![c * 2 + (k & 1)] = 1
       })
-      // The eyes are the holes of the two head cells beside the middle: ▛ leaves its bottom right quarter, ▜ its bottom left. Claws never count.
-      if (r === 0 && c === 1 && g === '▛') eyes.push([c * 2 + 1, 1])
-      if (r === 0 && c === row.length - 2 && g === '▜') eyes.push([c * 2, 1])
+      // The head row's holes are the eyes: ▛ leaves the bottom right quarter, ▜ the bottom left.
+      if (r === 0 && g === '▛') eyes.push([c * 2 + 1, 1])
+      if (r === 0 && g === '▜') eyes.push([c * 2, 1])
     })
   })
   const cls = `k${color.slice(1)}`
@@ -188,7 +199,7 @@ function petSvg(color: string, frame: number) {
     }
   })
   for (const [x, y] of eyes) rects.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${EYE}"/>`)
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${PET_PX_W}" height="${rows.length * PET_PX_ROW}" preserveAspectRatio="none" shape-rendering="crispEdges"><style>@media (prefers-color-scheme: dark){.${cls}{fill:${darkOf(color)}}}</style>${rects.join('')}</svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${PET_PX_W}" height="${PET_PX_H}" preserveAspectRatio="none" shape-rendering="crispEdges"><style>@media (prefers-color-scheme: dark){.${cls}{fill:${darkOf(color)}}}</style>${rects.join('')}</svg>`
   petCache.set(key, svg)
   return svg
 }
@@ -993,10 +1004,10 @@ function groupSteps(steps: Step[]): { st: Step; n: number }[] {
 }
 
 /**
- * The terminal card bar, in the style of the macOS Updates bars: one slim heavy line, the track dim and a
- * short piece in the helper's colour gliding to and fro, its ends softened with half-cell caps; a brighter
- * cell runs along the piece. No fraction is known for a subagent, so it never fills while it works. A seat's
- * phase is offset, so bars do not move in step. Returns the track before, the piece's cells and the track after.
+ * The terminal card bar: while it works a dim heavy track '━' and a short piece of '━' in the helper's colour gliding
+ * to and fro, a brighter cell running along it. No fraction is known for a subagent, so it never fills while it works.
+ * A seat's phase is offset, so bars do not move in step. Over, the card draws a full '█' line instead.
+ * Returns the track before, the piece's cells and the track after.
  */
 function cardBar(w: number, tick: number, seat: number): { before: string; cells: string[]; after: string; pulse: number } {
   if (w <= 0) return { before: '', cells: [], after: '', pulse: -1 }
@@ -1005,9 +1016,8 @@ function cardBar(w: number, tick: number, seat: number): { before: string; cells
   const phase = tick * 2 + seat * 3
   const step = room ? phase % (2 * room) : 0
   const pos = step <= room ? step : 2 * room - step
-  const cells = Array.from({ length: len }, (_, i) => (len >= 2 && i === 0 ? '╺' : len >= 2 && i === len - 1 ? '╸' : '━'))
-  // The track is the thin '─', the piece the heavy '━': working reads thin, done (a full '━' line) reads thick.
-  return { before: '─'.repeat(pos), cells, after: '─'.repeat(w - pos - len), pulse: (tick + seat) % len }
+  const cells = Array.from({ length: len }, () => '━')
+  return { before: '━'.repeat(pos), cells, after: '━'.repeat(w - pos - len), pulse: (tick + seat) % len }
 }
 
 // ---------- Slim animated bars: SVG for the desktop ----------
@@ -1033,12 +1043,15 @@ function mix(a: string, b: string, t: number): string {
   return `#${[0, 1, 2].map(i => Math.round(at(a, i) + (at(b, i) - at(a, i)) * t).toString(16).padStart(2, '0')).join('')}`
 }
 
-const BAND_H = 18
-// Done is drawn thick, working and still to do thin.
-const THICK_H = 8
-const THIN_H = 3
+// One thickness rule for every bar: the normal line (a track, work still to do) is 8 px, and what is finished is 3 times that.
+const TRACK_H = 8
+const DONE_H = TRACK_H * 3
+const BAND_H = 28
 
-/** The task bar above the prompt, one drawing: dot, title, slim purple gradient track, "Tasks 2/7", percent. */
+/**
+ * The task bar above the prompt, one drawing: dot, title, a purple track with a static gradient fill, "Tasks 2/7", percent.
+ * Only the unfinished part moves: a bright piece glides back and forth over it from the end of the fill to the end of the bar.
+ */
 function bandSvg(p: BandPlan, W: number): string {
   const n = p.steps.length
   const done = doneCount(p.steps)
@@ -1050,61 +1063,53 @@ function bandSvg(p: BandPlan, W: number): string {
   const pctPx = 34
   const barX = Math.round(14 + textPx(title, 13) + 12)
   const barW = Math.max(60, W - barX - labelPx - pctPx - 16)
-  const yK = (BAND_H - THICK_H) / 2
-  const yN = (BAND_H - THIN_H) / 2
+  const yN = (BAND_H - TRACK_H) / 2
+  const yK = (BAND_H - DONE_H) / 2
   const fillW = Math.round(barW * ratio)
-  // The step in progress glows softly from the fill to that step's end.
+  const restW = barW - fillW
   const live = p.steps.some(st => st.status === 'in_progress')
-  const liveW = live ? Math.round((barW * Math.min(n, done + 1)) / n) - fillW : 0
+  const pieceW = Math.min(restW, Math.max(16, Math.round(restW * 0.18)))
+  const run = Math.max(restW - pieceW, 0)
   const ticks: string[] = []
   for (let i = 1; i < n; i++) {
     const x = Math.round((barW * i) / n)
-    if (x > fillW + 3) ticks.push(`<rect x="${x}" y="${yN - 1.5}" width="1" height="${THIN_H + 3}"/>`)
+    if (x > fillW + 3) ticks.push(`<rect x="${x}" y="${yN}" width="1" height="${TRACK_H}"/>`)
   }
-  const finished = n > 0 && done === n
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${BAND_H}" viewBox="0 0 ${W} ${BAND_H}">
 <style>
-.tt{fill:#1f1f1f}.pc{fill:#6b6b6b}.lb{fill:${P_SVG.light[2]}}.dt{fill:${P_SVG.light[2]}}.k{fill:#ece9fb}.tk{fill:#c9c2f0}
-.g0{stop-color:${P_SVG.light[0]}}.g1{stop-color:${P_SVG.light[1]}}.g2{stop-color:${P_SVG.light[2]}}.lv{fill:${P_SVG.light[1]}}
-@media (prefers-color-scheme: dark){.tt{fill:#ececec}.pc{fill:#a3a3a3}.lb{fill:${P_SVG.dark[0]}}.dt{fill:${P_SVG.dark[0]}}.k{fill:#2a2640}.tk{fill:#4c4470}
-.g0{stop-color:${P_SVG.dark[0]}}.g1{stop-color:${P_SVG.dark[1]}}.g2{stop-color:${P_SVG.dark[2]}}.lv{fill:${P_SVG.dark[1]}}}
-.lv{animation:gl 1.2s ease-in-out infinite}@keyframes gl{0%,100%{opacity:.55}50%{opacity:1}}
-.sh{animation:sw 1.8s linear infinite}@keyframes sw{from{transform:translateX(-40px)}to{transform:translateX(${fillW}px)}}
-.lw{animation:lw 1s linear infinite}@keyframes lw{from{transform:translateX(-30px)}to{transform:translateX(${Math.max(liveW, 0)}px)}}
-@media (prefers-reduced-motion: reduce){.lv,.sh,.lw{animation:none}}
+.tt{fill:#1f1f1f}.pc{fill:#6b6b6b}.lb{fill:${P_SVG.light[2]}}.dt{fill:${P_SVG.light[2]}}.k{fill:#ece9fb}.tk{fill:#c9c2f0}.mp{fill:${P_SVG.light[2]}}
+.g0{stop-color:${P_SVG.light[0]}}.g1{stop-color:${P_SVG.light[1]}}.g2{stop-color:${P_SVG.light[2]}}
+@media (prefers-color-scheme: dark){.tt{fill:#ececec}.pc{fill:#a3a3a3}.lb{fill:${P_SVG.dark[0]}}.dt{fill:${P_SVG.dark[0]}}.k{fill:#2a2640}.tk{fill:#4c4470}.mp{fill:${P_SVG.dark[0]}}
+.g0{stop-color:${P_SVG.dark[0]}}.g1{stop-color:${P_SVG.dark[1]}}.g2{stop-color:${P_SVG.dark[2]}}}
+.mp{animation:mp 1.6s ease-in-out infinite alternate}@keyframes mp{from{transform:translateX(0)}to{transform:translateX(${run}px)}}
+@media (prefers-reduced-motion: reduce){.mp{animation:none}}
 </style>
 <defs>
 <linearGradient id="hdb-g" x1="0" x2="1"><stop class="g0" offset="0" stop-color="${P_SVG.light[0]}"/><stop class="g1" offset=".55" stop-color="${P_SVG.light[1]}"/><stop class="g2" offset="1" stop-color="${P_SVG.light[2]}"/></linearGradient>
-<linearGradient id="hdb-w" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-<linearGradient id="hdb-s" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-<clipPath id="hdb-f"><rect y="${yK}" width="${fillW}" height="${THICK_H}" rx="${THICK_H / 2}"/></clipPath>
-<clipPath id="hdb-l"><rect x="${fillW}" y="${yN}" width="${Math.max(liveW, 0)}" height="${THIN_H}"/></clipPath>
 </defs>
 <circle class="dt" cx="5" cy="${BAND_H / 2}" r="4" fill="${P_SVG.light[2]}"/>
 <text class="tt" x="14" y="${BAND_H / 2 + 4.5}" font-family="${FONT}" font-size="13" font-weight="600">${xml(title)}</text>
 <g transform="translate(${barX},0)">
-<rect class="k" y="${yN}" width="${barW}" height="${THIN_H}" rx="${THIN_H / 2}"/>
-<g>
-${liveW > 0 ? `<rect class="lv" x="${fillW}" y="${yN}" width="${liveW}" height="${THIN_H}" rx="${THIN_H / 2}" fill="${P_SVG.light[1]}"/><g clip-path="url(#hdb-l)"><rect class="lw" x="${fillW}" y="${yN}" width="30" height="${THIN_H}" fill="url(#hdb-w)"/></g>` : ''}
-${fillW > 0 ? `<rect y="${yK}" width="${fillW}" height="${THICK_H}" rx="${THICK_H / 2}" fill="url(#hdb-g)"/>` : ''}
-${fillW > 0 && !finished ? `<g clip-path="url(#hdb-f)"><rect class="sh" y="${yK}" width="40" height="${THICK_H}" fill="url(#hdb-s)"/></g>` : ''}
+<rect class="k" y="${yN}" width="${barW}" height="${TRACK_H}" rx="${TRACK_H / 2}"/>
 <g class="tk">${ticks.join('')}</g>
-</g>
+${live && restW > 0 ? `<rect class="mp" x="${fillW}" y="${yN}" width="${pieceW}" height="${TRACK_H}" rx="${TRACK_H / 2}"/>` : ''}
+${fillW > 0 ? `<rect y="${yK}" width="${fillW}" height="${DONE_H}" rx="6" fill="url(#hdb-g)"/>` : ''}
 </g>
 <text class="lb" x="${barX + barW + 8}" y="${BAND_H / 2 + 4}" font-family="${FONT}" font-size="12" font-weight="700">${xml(label)}</text>
 <text class="pc" x="${W - 4}" y="${BAND_H / 2 + 4.5}" text-anchor="end" font-family="${FONT}" font-size="12.5" font-variant-numeric="tabular-nums">${percent}</text>
 </svg>`
 }
 
-// Working is a thin 2 px track with a 4 px piece gliding on it; done and stopped are one solid 6 px line.
-const CARD_BAR_H = 6
-const CARD_THIN_H = 2
-const CARD_PIECE_H = 4
+// Card bars follow the same rule: a working card has a 6 px track with a piece of 8 px gliding on it; done and stopped are one solid 18 px line.
+const CARD_TRACK_H = TRACK_H - 2
+const CARD_BAR_H = DONE_H - 6
+const CARD_PIECE_H = 8
 
 /**
- * The slim bar of a subagent card. While it works its length is not known, so a rounded piece in the helper's
- * colour, about a fifth of the track, glides to and fro with a small highlight running inside it. Over, the line
- * fills still: green when done, red when it stopped. The drawing depends only on the phase, so CSS moves it and redraws do not restart it.
+ * The bar of a subagent card. While it works its length is not known, so a rounded piece in the helper's
+ * colour, about a fifth of the track, glides to and fro on a thin track with a small highlight running inside it.
+ * Over, one solid thick line: green when done, red when it stopped. The drawing depends only on the phase, so CSS
+ * moves it and redraws do not restart it.
  */
 function cardBarSvg(phase: HelperPhase, color: string, W: number, seat: number): string {
   const id = `hdc${seat}`
@@ -1113,9 +1118,11 @@ function cardBarSvg(phase: HelperPhase, color: string, W: number, seat: number):
   const piece = Math.max(24, Math.round(W * 0.22))
   const glow = Math.min(10, piece - 4)
   const working = phase === 'working'
+  const yT = (H - CARD_TRACK_H) / 2
+  const yP = (H - CARD_PIECE_H) / 2
   const body = working
-    ? `<g class="mv${seat}"><rect class="fc${seat}" y="${(H - CARD_PIECE_H) / 2}" width="${piece}" height="${CARD_PIECE_H}" rx="${CARD_PIECE_H / 2}" fill="${fill}"/><rect class="gl${seat}" x="2" y="${(H - CARD_PIECE_H) / 2}" width="${glow}" height="${CARD_PIECE_H}" rx="${CARD_PIECE_H / 2}" fill="#ffffff" opacity=".8"/></g>`
-    : `<rect width="${W}" height="${H}" rx="${H / 2}" fill="${fill}"/>`
+    ? `<g class="mv${seat}"><rect class="fc${seat}" y="${yP}" width="${piece}" height="${CARD_PIECE_H}" rx="${CARD_PIECE_H / 2}" fill="${fill}"/><rect class="gl${seat}" x="2" y="${yP}" width="${glow}" height="${CARD_PIECE_H}" rx="${CARD_PIECE_H / 2}" fill="#ffffff" opacity=".8"/></g>`
+    : `<rect width="${W}" height="${H}" rx="4" fill="${fill}"/>`
   const delay = ((seat * 0.4) % 1.6).toFixed(2)
   const style = working
     ? `<style>
@@ -1129,9 +1136,9 @@ function cardBarSvg(phase: HelperPhase, color: string, W: number, seat: number):
     : ''
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 ${style}
-<defs><clipPath id="${id}-c"><rect width="${W}" height="${H}" rx="${H / 2}"/></clipPath></defs>
+<defs><clipPath id="${id}-c"><rect width="${W}" height="${H}" rx="4"/></clipPath></defs>
 <g clip-path="url(#${id}-c)">
-${working ? `<rect class="fc${seat}" y="${(H - CARD_THIN_H) / 2}" width="${W}" height="${CARD_THIN_H}" rx="${CARD_THIN_H / 2}" fill="${fill}" opacity=".3"/>` : ''}
+${working ? `<rect class="fc${seat}" y="${yT}" width="${W}" height="${CARD_TRACK_H}" rx="${CARD_TRACK_H / 2}" fill="${fill}" opacity=".3"/>` : ''}
 ${body}
 </g>
 </svg>`
@@ -1391,8 +1398,8 @@ export const register: Register = on => {
       const seatTag = <Text key={`seat-${hp.id}`} dimColor>{`#${hp.seat + 1}`}</Text>
       if (Svg) {
         return (
-          <Box key={`pet-${hp.id}`} width={PET_W} flexShrink={0} flexDirection="column">
-            <Svg source={petSvg(color, frame)} alt={`Claude crab, ${familyName(hp.model)}`} width={PET_PX_W} height={CLAWD[0]!.length * PET_PX_ROW} />
+          <Box key={`pet-${hp.id}`} width={PET_W} flexShrink={0} flexDirection="column" justifyContent="center">
+            <Svg source={petSvg(color, frame)} alt={`Claude crab, ${familyName(hp.model)}`} width={PET_PX_W} height={PET_PX_H} />
             {seatTag}
           </Box>
         )
@@ -1490,7 +1497,7 @@ export const register: Register = on => {
           ) : (
             <Box key={`bar-${hp.id}`} width={barCols}>
               <Text color={barColor} wrap="truncate-end">
-                {'━'.repeat(barCols)}
+                {'█'.repeat(barCols)}
               </Text>
             </Box>
           )}
@@ -1751,12 +1758,12 @@ export const register: Register = on => {
         </Box>
       )
     } else {
-      // The terminal: dot, title, one slim heavy line (fill and track the same glyph, told apart by colour),
-      // the step in progress shimmering, a bright pulse running along the fill, count, percent.
+      // The terminal: dot, title, the done part as thick full blocks in a static purple gradient, the unfinished part as
+      // a dim heavy line, count, percent. Only the unfinished part moves: a bright piece of 3 cells glides over it.
       const { value: tick = 0 } = await $.state.get(SHIM)
       w = cols || BAR_FALLBACK
       const { titleW, barW, showTitle, showPct } = bandLayout(w - 2, p.title.length, label.length, pct.length)
-      // Half cells, so the fill moves in half steps: a half cap '╸' ends it mid-cell.
+      // Half cells, so the fill moves in half steps: a half block '▌' ends it mid-cell.
       const total = barW * 2
       let halves = Math.round((done / n) * total)
       if (done > 0) halves = Math.max(1, halves)
@@ -1764,12 +1771,12 @@ export const register: Register = on => {
       const fillC = Math.floor(halves / 2)
       const cap = halves % 2 === 1
       const used = fillC + (cap ? 1 : 0)
-      const liveC = now ? Math.max(0, Math.round((barW * Math.min(n, done + 1)) / n) - used) : 0
-      // The pulse: three bright cells running along the fill, two cells a tick, only while a step is in progress.
-      const lead = ((tick * 2) % (fillC + 3)) - 3
-      const cells = Array.from({ length: fillC }, (_, i) =>
-        now && i >= lead && i < lead + 3 ? PULSE : mix(P_LIGHT, P_DEEP, fillC > 1 ? i / (fillC - 1) : 1),
-      )
+      const cells = Array.from({ length: fillC }, (_, i) => mix(P_LIGHT, P_DEEP, fillC > 1 ? i / (fillC - 1) : 1))
+      const rest = Math.max(0, barW - used)
+      const len = now ? Math.min(3, rest) : 0
+      const room = rest - len
+      const step = room ? (tick * 2) % (2 * room) : 0
+      const pos = step <= room ? step : 2 * room - step
       row = (
         <Box key="plan-row" flexDirection="row" gap={1} width={w}>
           <Text color={P_DEEP}>●</Text>
@@ -1782,20 +1789,21 @@ export const register: Register = on => {
           ) : null}
           {barW ? (
             <Box key="plan-bar" flexShrink={0}>
-            <Text>
-              {cells.map((c, i) => (
-                <Text key={`f-${i}`} color={c}>
-                  ━
-                </Text>
-              ))}
-              {cap ? <Text color={P_DEEP}>╸</Text> : null}
-              {Array.from({ length: liveC }, (_, i) => (
-                <Text key={`l-${i}`} color={(i - (tick % (liveC + 2)) + 2 + liveC + 2) % (liveC + 2) < 2 ? PULSE : P_MID}>
-                  ─
-                </Text>
-              ))}
-              <Text dimColor>{'─'.repeat(Math.max(0, barW - used - liveC))}</Text>
-            </Text>
+              <Text>
+                {cells.map((c, i) => (
+                  <Text key={`f-${i}`} color={c}>
+                    █
+                  </Text>
+                ))}
+                {cap ? <Text color={P_DEEP}>▌</Text> : null}
+                <Text dimColor>{'━'.repeat(len ? pos : rest)}</Text>
+                {Array.from({ length: len }, (_, i) => (
+                  <Text key={`m-${i}`} color={PULSE}>
+                    ━
+                  </Text>
+                ))}
+                <Text dimColor>{'━'.repeat(len ? room - pos : 0)}</Text>
+              </Text>
             </Box>
           ) : null}
           <Text bold color={P_MID}>{label}</Text>
