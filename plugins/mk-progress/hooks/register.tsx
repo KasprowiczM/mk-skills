@@ -1608,7 +1608,7 @@ export const register: Register = on => {
         ) : null}
         {barW ? (
           <Box key="plan-bar" flexShrink={0}>
-            <Text>{cacheStyleBar(done / n, 'done', barW, now ? tick : undefined).text}</Text>
+            <Text>{cacheStyleBar(done / n, 'brand', barW, now ? tick : undefined).text}</Text>
           </Box>
         ) : null}
         <Text bold color={P_MID}>{label}</Text>

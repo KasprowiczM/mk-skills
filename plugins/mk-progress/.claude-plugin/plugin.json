@@ -1,7 +1,7 @@
 {
   "name": "mk-progress",
-  "version": "0.9.5",
-  "description": "MK Progress: a task progress bar above the prompt in the Cache style (10 emoji cells, green/yellow/red, only the tip of a working bar blinks) and a side pane with one live card per subagent",
+  "version": "0.9.6",
+  "description": "MK Progress: a purple task progress bar above the prompt in the Cache style (10 emoji cells, only the tip of a working bar blinks) and a side pane with one live card per subagent (green/yellow/red bars)",
   "author": {
     "name": "mk"
   },

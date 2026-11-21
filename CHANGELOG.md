@@ -6,6 +6,11 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-21
+
+### Changed
+- mk-progress 0.9.6: the main task bar above the prompt is purple (`🟪` cells on `⬜`, via a `brand` mode of the shared `cacheStyleBar`); the tip still blinks while a step is in progress, a finished plan is all purple and still. Subagent card bars keep green/yellow/red.
+
 ## [0.7.0] - 2026-11-21
 
 ### Added

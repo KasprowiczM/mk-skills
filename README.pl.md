@@ -20,7 +20,7 @@ Mody to wtyczki Claude Code zmieniające interfejs samego Claude. Wymagają wers
 
 | Mod | Co robi | Wersja |
 |---|---|---|
-| [`mk-progress`](plugins/mk-progress/README.md) | Mod do Claude Code: boczny panel z kartami subagentów na żywo (krab Clawd w kolorze modelu, kroki, czas, tokeny, koszt) i pasek postępu zadań nad promptem. | 0.9.5 |
+| [`mk-progress`](plugins/mk-progress/README.md) | Mod do Claude Code: boczny panel z kartami subagentów na żywo (krab Clawd w kolorze modelu, kroki, czas, tokeny, koszt) i fioletowy pasek postępu zadań nad promptem. | 0.9.6 |
 
 ## Claude Code: wtyczki
 

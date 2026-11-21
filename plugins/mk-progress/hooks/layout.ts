@@ -2,22 +2,23 @@
 
 /** The bar of the Cache mod: 10 emoji cells, a filled part in one colour, the rest white. */
 export const BAR_CELLS = 10
-export type BarColor = 'success' | 'warning' | 'error'
+export type BarColor = 'success' | 'warning' | 'error' | 'brand'
 /**
  * How the fraction turns into a colour, the Cache rule (green above 0.5 left, yellow above 0.2, red below) adapted to the use:
  * 'left' a resource running out, the fraction is what is left; 'used' a consumption, the fraction is what is used (green
  * under 50%, yellow under 80%, red from 80%); 'done' a completion (yellow up to half, green above half and when complete,
- * never red); 'failed' work that stopped (red).
+ * never red); 'failed' work that stopped (red); 'brand' the mod's own purple, for the main task bar (always 🟪).
  */
-export type BarMode = 'left' | 'used' | 'done' | 'failed'
+export type BarMode = 'left' | 'used' | 'done' | 'failed' | 'brand'
 export type CacheStyleBar = { filled: number; empty: number; color: BarColor; text: string }
 
-export const BLOCK: Record<BarColor, string> = { success: '🟩', warning: '🟨', error: '🟥' }
+export const BLOCK: Record<BarColor, string> = { success: '🟩', warning: '🟨', error: '🟥', brand: '🟪' }
 const EMPTY = '⬜'
 
 export function barColor(fraction: number, mode: BarMode): BarColor {
   const f = Math.min(1, Math.max(0, fraction))
   if (mode === 'failed') return 'error'
+  if (mode === 'brand') return 'brand'
   if (mode === 'done') return f > 0.5 ? 'success' : 'warning'
   const left = mode === 'used' ? 1 - f : f
   return left > 0.5 ? 'success' : left > 0.2 ? 'warning' : 'error'

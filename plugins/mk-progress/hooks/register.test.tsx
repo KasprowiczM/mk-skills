@@ -615,7 +615,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
       frames.add(await bar())
       await clock.advance(350)
     }
-    expect([...frames].sort(), 'the tip blinks, the rest is still').toEqual(['🟨🟨🟨🟨⬜⬜⬜⬜⬜⬜', '🟨🟨🟨🟨🟨⬜⬜⬜⬜⬜'].sort())
+    expect([...frames].sort(), 'the tip blinks, the rest is still').toEqual(['🟪🟪🟪🟪⬜⬜⬜⬜⬜⬜', '🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜'].sort())
     expect(await v.find({ type: 'Svg' }), 'no Svg bar').toBeUndefined()
 
     // The bar follows the plan, not subagents: a running subagent adds nothing to it.
@@ -888,7 +888,7 @@ for (const surface of ALL) {
         const l = bandLayout(cols - 2, 'Make the deck'.length, 'Tasks 2/4'.length, '50%'.length)
         const glyphs = ((await v.find({ key: 'plan-bar' })) as { text: string } | undefined)?.text ?? ''
         expect([...glyphs].length, `bar cells at ${cols} columns`).toBe(l.barW)
-        expect(/^[🟩🟨🟥⬜]*$/u.test(glyphs), 'Cache emoji cells only').toBe(true)
+        expect(/^[🟪⬜]*$/u.test(glyphs), 'the main task bar: purple cells on white only').toBe(true)
         expect(await v.find({ type: 'Svg' }), 'no Svg bar').toBeUndefined()
         expect(await v.find({ text: /^50%$/ }) !== undefined, `percent shown only where it fits (${cols})`).toBe(l.showPct)
       }
@@ -1081,6 +1081,11 @@ test('the Cache bar: 10 emoji cells, round to the nearest with at least one, col
   // Done: yellow until half, green above it and when complete, red only for failed work.
   expect([0.1, 0.5, 0.51, 1].map(f => barColor(f, 'done'))).toEqual(['warning', 'warning', 'success', 'success'])
   expect(barColor(0.9, 'failed')).toBe('error')
+  // Brand: the main task bar is always the mod's purple.
+  expect([0, 0.1, 0.6, 1].map(f => barColor(f, 'brand'))).toEqual(['brand', 'brand', 'brand', 'brand'])
+  expect(cacheStyleBar(0.6, 'brand').text).toBe('🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜')
+  expect(cacheStyleBar(0.6, 'brand', 10, 1).text, 'the purple tip blinks').toBe('🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜')
+  expect(cacheStyleBar(1, 'brand', 10, 1).text, 'finished: all purple, static').toBe('🟪'.repeat(10))
   expect(cacheStyleBar(0.4, 'done', 4).text, 'other widths').toBe('🟨🟨⬜⬜')
   // The tip: even ticks show the colour block, odd ticks blank the last filled cell; a complete or tickless bar never moves.
   expect(cacheStyleBar(0.6, 'done', 10, 0).text).toBe('🟩🟩🟩🟩🟩🟩⬜⬜⬜⬜')

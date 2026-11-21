@@ -20,7 +20,7 @@ Mods are Claude Code plugins that change Claude's own interface. They need a Cla
 
 | Mod | What it does | Version |
 |---|---|---|
-| [`mk-progress`](plugins/mk-progress/README.md) | A Claude Code mod: a side pane with live subagent cards (Clawd crab coloured by model, steps, time, tokens, cost) and a task progress bar above the prompt. | 0.9.5 |
+| [`mk-progress`](plugins/mk-progress/README.md) | A Claude Code mod: a side pane with live subagent cards (Clawd crab coloured by model, steps, time, tokens, cost) and a purple task progress bar above the prompt. | 0.9.6 |
 
 ## Claude Code: plugins
 
