@@ -547,7 +547,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
       const done = String((await v.findAll({ type: 'Svg' })).find(b => b.props.alt === 'Done')?.props.source)
       expect(done, 'done: full green line').toContain('#16a34a')
       expect(done, 'done: still').not.toContain('@keyframes mv')
-      expect(done, 'done: a solid 18 px line, 3 times the 6 px track').toMatch(/<rect width="\d+" height="18"/)
+      expect(done, 'done: a solid 9 px line, 1.5 times the 6 px track').toMatch(/<rect width="\d+" height="9"/)
       expect(done, 'done and working differ in thickness').not.toContain('height="6"')
       expect(String((await v.findAll({ type: 'Svg' })).find(b => b.props.alt === 'Stopped')?.props.source), 'stopped: full red line').toContain('#dc2626')
       return
@@ -634,10 +634,10 @@ for (const surface of ['desktop', 'terminal'] as const) {
       expect(svg, 'no separate glow segment').not.toContain('class="lv"')
       expect(svg, 'a bright piece glides over the unfinished part').toContain('class="mp"')
       expect(svg, 'reduced motion stops it').toContain('prefers-reduced-motion')
-      expect(svg, 'the unfinished track is 8 px').toMatch(/class="k" y="10" width="\d+" height="8"/)
-      expect(svg, 'the finished fill is 24 px, 3 times that').toMatch(/<rect y="2" width="\d+" height="24"[^>]*fill="url\(#hdb-g\)"/)
-      expect(svg, 'the piece is as thick as the track').toMatch(/class="mp" x="\d+" y="10" width="\d+" height="8"/)
-      const fillW = Number(/<rect y="2" width="(\d+)" height="24"/.exec(svg)![1])
+      expect(svg, 'the unfinished track is 8 px').toMatch(/class="k" y="5" width="\d+" height="8"/)
+      expect(svg, 'the finished fill is 12 px, 1.5 times that').toMatch(/<rect y="3" width="\d+" height="12"[^>]*fill="url\(#hdb-g\)"/)
+      expect(svg, 'the piece is as thick as the track').toMatch(/class="mp" x="\d+" y="5" width="\d+" height="8"/)
+      const fillW = Number(/<rect y="3" width="(\d+)" height="12"/.exec(svg)![1])
       expect(Number(/class="mp" x="(\d+)"/.exec(svg)![1]), 'the piece starts where the fill ends').toBe(fillW)
       expect(svg, 'tick marks stay on the unfinished track').toContain('class="tk"')
     } else {

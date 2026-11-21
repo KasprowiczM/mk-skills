@@ -1043,10 +1043,10 @@ function mix(a: string, b: string, t: number): string {
   return `#${[0, 1, 2].map(i => Math.round(at(a, i) + (at(b, i) - at(a, i)) * t).toString(16).padStart(2, '0')).join('')}`
 }
 
-// One thickness rule for every bar: the normal line (a track, work still to do) is 8 px, and what is finished is 3 times that.
+// One thickness rule for every bar: the normal line (a track, work still to do) is 8 px, and what is finished is 1.5 times that.
 const TRACK_H = 8
-const DONE_H = TRACK_H * 3
-const BAND_H = 28
+const DONE_H = TRACK_H * 1.5
+const BAND_H = 18
 
 /**
  * The task bar above the prompt, one drawing: dot, title, a purple track with a static gradient fill, "Tasks 2/7", percent.
@@ -1093,16 +1093,16 @@ function bandSvg(p: BandPlan, W: number): string {
 <rect class="k" y="${yN}" width="${barW}" height="${TRACK_H}" rx="${TRACK_H / 2}"/>
 <g class="tk">${ticks.join('')}</g>
 ${live && restW > 0 ? `<rect class="mp" x="${fillW}" y="${yN}" width="${pieceW}" height="${TRACK_H}" rx="${TRACK_H / 2}"/>` : ''}
-${fillW > 0 ? `<rect y="${yK}" width="${fillW}" height="${DONE_H}" rx="6" fill="url(#hdb-g)"/>` : ''}
+${fillW > 0 ? `<rect y="${yK}" width="${fillW}" height="${DONE_H}" rx="4" fill="url(#hdb-g)"/>` : ''}
 </g>
 <text class="lb" x="${barX + barW + 8}" y="${BAND_H / 2 + 4}" font-family="${FONT}" font-size="12" font-weight="700">${xml(label)}</text>
 <text class="pc" x="${W - 4}" y="${BAND_H / 2 + 4.5}" text-anchor="end" font-family="${FONT}" font-size="12.5" font-variant-numeric="tabular-nums">${percent}</text>
 </svg>`
 }
 
-// Card bars follow the same rule: a working card has a 6 px track with a piece of 8 px gliding on it; done and stopped are one solid 18 px line.
+// Card bars follow the same rule: a working card has a 6 px track with a piece of 8 px gliding on it; done and stopped are one solid 9 px line (1.5 times the track).
 const CARD_TRACK_H = TRACK_H - 2
-const CARD_BAR_H = DONE_H - 6
+const CARD_BAR_H = 9
 const CARD_PIECE_H = 8
 
 /**

@@ -6,6 +6,11 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-21
+
+### Changed
+- mk-progress 0.9.2: finished bar parts are half as thick (task bar fill 12 px over an 8 px track; card done and stopped bars 9 px over a 6 px running track).
+
 ## [0.6.1] - 2026-11-21
 
 ### Changed
