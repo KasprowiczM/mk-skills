@@ -3,7 +3,7 @@ import { appendText, claudeDirOf, findPaths, mkdirs, removeFile } from './platfo
 
 import type { BandPlan, Helper, HelperPhase, ModelShare, PlanStatus, Step, StepKind } from '../types'
 import { connectorName, splitTool } from './connectors'
-import { bandLayout } from './layout'
+import { BAR_CELLS, bandLayout, cacheStyleBar } from './layout'
 import { programOf, redact } from './redact'
 
 const NAME = 'mk-progress'
@@ -51,17 +51,11 @@ const BAD = '#dc2626'
 // Amber, not #eab308: the yellow of "Finished" must read on a white page and on #1e1e1e.
 const WARN = '#b98d06'
 // The engine does not tell the mod the theme, so every colour the terminal draws is one mid-tone that holds at
-// least 3:1 against both #ffffff and #1e1e1e (see the palette test). The task bar is a purple gradient, light at the
-// start and deep at the head (after Johnny's Savvy Progress).
-const P_LIGHT = '#9f7aea'
+// least 3:1 against both #ffffff and #1e1e1e (see the palette test).
 const P_MID = '#8b5cf6'
 const P_DEEP = '#8146de'
-// The Svg band knows the theme through CSS, so it has a light page set and a dark page set of the same gradient.
-const P_SVG = { light: ['#9f7aea', '#8b5cf6', '#6d28d9'], dark: ['#c4b5fd', '#a78bfa', '#8b5cf6'] } as const
 // Quarter circles read clearly on desktop fonts and in the terminal.
 const SPIN = ['◐', '◓', '◑', '◒']
-// The bright piece that travels along a fill is drawn in the theme's own text colour: it stands out on both pages.
-const PULSE = 'text'
 
 const KIND_COLOR: Record<StepKind, string> = {
   Command: '#c68704',
@@ -1014,147 +1008,6 @@ function groupSteps(steps: Step[]): { st: Step; n: number }[] {
   return out
 }
 
-/**
- * The terminal card bar: while it works a dim heavy track '━' and a short piece of '━' in the helper's colour gliding
- * to and fro, a brighter cell running along it. No fraction is known for a subagent, so it never fills while it works.
- * A seat's phase is offset, so bars do not move in step. Over, the card draws a full '█' line instead.
- * Returns the track before, the piece's cells and the track after.
- */
-function cardBar(w: number, tick: number, seat: number): { before: string; cells: string[]; after: string; pulse: number } {
-  if (w <= 0) return { before: '', cells: [], after: '', pulse: -1 }
-  const len = Math.min(w, Math.max(3, Math.round(w / 6)))
-  const room = w - len
-  const phase = tick * 2 + seat * 3
-  const step = room ? phase % (2 * room) : 0
-  const pos = step <= room ? step : 2 * room - step
-  const cells = Array.from({ length: len }, () => '━')
-  return { before: '━'.repeat(pos), cells, after: '━'.repeat(w - pos - len), pulse: (tick + seat) % len }
-}
-
-// ---------- Slim animated bars: SVG for the desktop ----------
-
-const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif"
-
-const xml = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c)
-// A rough width of system UI text, enough to place the bar after the title.
-const textPx = (s: string, size: number) => [...s].reduce((n, ch) => n + (/[\s.,:;'|!il1()[\]]/.test(ch) ? 0.3 : /[A-Zmw@%]/.test(ch) ? 0.72 : 0.56) * size, 0)
-const fitPx = (s: string, size: number, max: number) => {
-  if (textPx(s, size) <= max) return s
-  let out = ''
-  for (const ch of s) {
-    if (textPx(`${out}${ch}…`, size) > max) break
-    out += ch
-  }
-  return `${out}…`
-}
-
-/** A colour between `a` and `b`, both #rrggbb; `t` from 0 to 1. */
-function mix(a: string, b: string, t: number): string {
-  const at = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16)
-  return `#${[0, 1, 2].map(i => Math.round(at(a, i) + (at(b, i) - at(a, i)) * t).toString(16).padStart(2, '0')).join('')}`
-}
-
-// One thickness rule for every bar: the normal line (a track, work still to do) is 8 px, and what is finished is 1.5 times that.
-const TRACK_H = 8
-const DONE_H = TRACK_H * 1.5
-const BAND_H = 18
-
-/**
- * The task bar above the prompt, one drawing: dot, title, a purple track with a static gradient fill, "Tasks 2/7", percent.
- * Only the unfinished part moves: a bright piece glides back and forth over it from the end of the fill to the end of the bar.
- */
-function bandSvg(p: BandPlan, W: number): string {
-  const n = p.steps.length
-  const done = doneCount(p.steps)
-  const ratio = n ? done / n : 0
-  const title = fitPx(p.title, 13, Math.max(60, W * 0.35))
-  const percent = `${Math.round(ratio * 100)}%`
-  const label = `Tasks ${done}/${n}`
-  const labelPx = Math.round(textPx(label, 12) + 2)
-  const pctPx = 34
-  const barX = Math.round(14 + textPx(title, 13) + 12)
-  const barW = Math.max(60, W - barX - labelPx - pctPx - 16)
-  const yN = (BAND_H - TRACK_H) / 2
-  const yK = (BAND_H - DONE_H) / 2
-  const fillW = Math.round(barW * ratio)
-  const restW = barW - fillW
-  const live = p.steps.some(st => st.status === 'in_progress')
-  const pieceW = Math.min(restW, Math.max(16, Math.round(restW * 0.18)))
-  const run = Math.max(restW - pieceW, 0)
-  const ticks: string[] = []
-  for (let i = 1; i < n; i++) {
-    const x = Math.round((barW * i) / n)
-    if (x > fillW + 3) ticks.push(`<rect x="${x}" y="${yN}" width="1" height="${TRACK_H}"/>`)
-  }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${BAND_H}" viewBox="0 0 ${W} ${BAND_H}">
-<style>
-.tt{fill:#1f1f1f}.pc{fill:#6b6b6b}.lb{fill:${P_SVG.light[2]}}.dt{fill:${P_SVG.light[2]}}.k{fill:#ece9fb}.tk{fill:#c9c2f0}.mp{fill:${P_SVG.light[2]}}
-.g0{stop-color:${P_SVG.light[0]}}.g1{stop-color:${P_SVG.light[1]}}.g2{stop-color:${P_SVG.light[2]}}
-@media (prefers-color-scheme: dark){.tt{fill:#ececec}.pc{fill:#a3a3a3}.lb{fill:${P_SVG.dark[0]}}.dt{fill:${P_SVG.dark[0]}}.k{fill:#2a2640}.tk{fill:#4c4470}.mp{fill:${P_SVG.dark[0]}}
-.g0{stop-color:${P_SVG.dark[0]}}.g1{stop-color:${P_SVG.dark[1]}}.g2{stop-color:${P_SVG.dark[2]}}}
-.mp{animation:mp 1.6s ease-in-out infinite alternate}@keyframes mp{from{transform:translateX(0)}to{transform:translateX(${run}px)}}
-@media (prefers-reduced-motion: reduce){.mp{animation:none}}
-</style>
-<defs>
-<linearGradient id="hdb-g" x1="0" x2="1"><stop class="g0" offset="0" stop-color="${P_SVG.light[0]}"/><stop class="g1" offset=".55" stop-color="${P_SVG.light[1]}"/><stop class="g2" offset="1" stop-color="${P_SVG.light[2]}"/></linearGradient>
-</defs>
-<circle class="dt" cx="5" cy="${BAND_H / 2}" r="4" fill="${P_SVG.light[2]}"/>
-<text class="tt" x="14" y="${BAND_H / 2 + 4.5}" font-family="${FONT}" font-size="13" font-weight="600">${xml(title)}</text>
-<g transform="translate(${barX},0)">
-<rect class="k" y="${yN}" width="${barW}" height="${TRACK_H}" rx="${TRACK_H / 2}"/>
-<g class="tk">${ticks.join('')}</g>
-${live && restW > 0 ? `<rect class="mp" x="${fillW}" y="${yN}" width="${pieceW}" height="${TRACK_H}" rx="${TRACK_H / 2}"/>` : ''}
-${fillW > 0 ? `<rect y="${yK}" width="${fillW}" height="${DONE_H}" rx="4" fill="url(#hdb-g)"/>` : ''}
-</g>
-<text class="lb" x="${barX + barW + 8}" y="${BAND_H / 2 + 4}" font-family="${FONT}" font-size="12" font-weight="700">${xml(label)}</text>
-<text class="pc" x="${W - 4}" y="${BAND_H / 2 + 4.5}" text-anchor="end" font-family="${FONT}" font-size="12.5" font-variant-numeric="tabular-nums">${percent}</text>
-</svg>`
-}
-
-// Card bars follow the same rule: a working card has a 6 px track with a piece of 8 px gliding on it; done and stopped are one solid 9 px line (1.5 times the track).
-const CARD_TRACK_H = TRACK_H - 2
-const CARD_BAR_H = 9
-const CARD_PIECE_H = 8
-
-/**
- * The bar of a subagent card. While it works its length is not known, so a rounded piece in the helper's
- * colour, about a fifth of the track, glides to and fro on a thin track with a small highlight running inside it.
- * Over, one solid thick line: green when done, red when it stopped. The drawing depends only on the phase, so CSS
- * moves it and redraws do not restart it.
- */
-function cardBarSvg(phase: HelperPhase, color: string, W: number, seat: number): string {
-  const id = `hdc${seat}`
-  const H = CARD_BAR_H
-  const fill = phase === 'failed' ? BAD : phase === 'done' ? GOOD : color
-  const piece = Math.max(24, Math.round(W * 0.22))
-  const glow = Math.min(10, piece - 4)
-  const working = phase === 'working'
-  const yT = (H - CARD_TRACK_H) / 2
-  const yP = (H - CARD_PIECE_H) / 2
-  const body = working
-    ? `<g class="mv${seat}"><rect class="fc${seat}" y="${yP}" width="${piece}" height="${CARD_PIECE_H}" rx="${CARD_PIECE_H / 2}" fill="${fill}"/><rect class="gl${seat}" x="2" y="${yP}" width="${glow}" height="${CARD_PIECE_H}" rx="${CARD_PIECE_H / 2}" fill="#ffffff" opacity=".8"/></g>`
-    : `<rect width="${W}" height="${H}" rx="4" fill="${fill}"/>`
-  const delay = ((seat * 0.4) % 1.6).toFixed(2)
-  const style = working
-    ? `<style>
-.fc${seat}{fill:${fill}}@media (prefers-color-scheme: dark){.fc${seat}{fill:${darkOf(fill)}}}
-.mv${seat}{animation:mv${seat} 1.6s ease-in-out -${delay}s infinite alternate}
-@keyframes mv${seat}{from{transform:translateX(0)}to{transform:translateX(${W - piece}px)}}
-.gl${seat}{animation:gl${seat} 1.1s ease-in-out -${delay}s infinite alternate}
-@keyframes gl${seat}{from{transform:translateX(0)}to{transform:translateX(${piece - glow - 4}px)}}
-@media (prefers-reduced-motion: reduce){.mv${seat},.gl${seat}{animation:none}}
-</style>`
-    : ''
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-${style}
-<defs><clipPath id="${id}-c"><rect width="${W}" height="${H}" rx="4"/></clipPath></defs>
-<g clip-path="url(#${id}-c)">
-${working ? `<rect class="fc${seat}" y="${yT}" width="${W}" height="${CARD_TRACK_H}" rx="${CARD_TRACK_H / 2}" fill="${fill}" opacity=".3"/>` : ''}
-${body}
-</g>
-</svg>`
-}
-
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     home = (await findPaths($)).home
@@ -1471,11 +1324,9 @@ export const register: Register = on => {
       ) : null
       const toggleW = hasSteps ? toggleText.length : 0
       const rowW = cw - TAG_W
-      // The thin bar fills the last row beside the toggle. About 6.5 CSS pixels a column, as the pet's 58 pixels fill its 9.
-      const barCols = Math.max(4, cw - (toggleW ? toggleW + 1 : 0))
-      const barPx = Math.floor(barCols * 6.5)
-      const bar = cardBar(barCols, clk.tick, hp.seat)
-      const barColor = live ? hue.color : failed ? BAD : GOOD
+      // The Cache bar (10 emoji cells, 2 columns each) shares the last row with the toggle; it loses cells only when the row is too narrow.
+      const barCells = Math.max(3, Math.min(BAR_CELLS, Math.floor((cw - (toggleW ? toggleW + 1 : 0)) / 2)))
+      const barText = live ? cacheStyleBar(0.3, 'done', barCells, clk.tick + hp.seat).text : cacheStyleBar(1, failed ? 'failed' : 'done', barCells).text
 
       const head = (
         <Box key={`r1-${hp.id}`} flexDirection="row" justifyContent="space-between" width={cw}>
@@ -1494,29 +1345,9 @@ export const register: Register = on => {
       )
       const barRow = (
         <Box key={`r4-${hp.id}`} flexDirection="row" alignItems="center" gap={1} width={cw}>
-          {Svg ? (
-            <Box key={`bar-${hp.id}`} width={barCols}>
-              <Svg source={cardBarSvg(hp.phase, hue.color, barPx, hp.seat)} alt={live ? 'Working' : failed ? 'Stopped' : 'Done'} width={barPx} height={CARD_BAR_H} />
-            </Box>
-          ) : live ? (
-            <Box key={`bar-${hp.id}`} width={barCols}>
-              <Text wrap="truncate-end">
-                <Text dimColor>{bar.before}</Text>
-                {bar.cells.map((c, i) => (
-                  <Text key={`bc-${i}`} color={i === bar.pulse ? PULSE : hue.color}>
-                    {c}
-                  </Text>
-                ))}
-                <Text dimColor>{bar.after}</Text>
-              </Text>
-            </Box>
-          ) : (
-            <Box key={`bar-${hp.id}`} width={barCols}>
-              <Text color={barColor} wrap="truncate-end">
-                {'█'.repeat(barCols)}
-              </Text>
-            </Box>
-          )}
+          <Box key={`bar-${hp.id}`} width={barCells * 2} flexShrink={0}>
+            <Text wrap="truncate-end">{barText}</Text>
+          </Box>
           {toggle}
         </Box>
       )
@@ -1761,74 +1592,31 @@ export const register: Register = on => {
 
     let row: unknown
     let w: number
-    if (e.surface !== 'terminal' && 'Svg' in els) {
-      const { Svg } = els
-      // About 8 CSS pixels a column; the rest is the dismiss button and its gap.
-      const px = Math.max(180, Math.min(1600, (cols || 100) * 8 - 76))
-      w = cols || BAR_FALLBACK
-      row = (
-        <Box key="plan-row" flexDirection="row" alignItems="center" gap={1}>
-          <Svg key="plan-svg" source={bandSvg(p, px)} alt={`${p.title}: ${label}, ${pct}`} width={px} height={BAND_H} />
-          {toggle}
-          {dismiss}
-        </Box>
-      )
-    } else {
-      // The terminal: dot, title, the done part as thick full blocks in a static purple gradient, the unfinished part as
-      // a dim heavy line, count, percent. Only the unfinished part moves: a bright piece of 3 cells glides over it.
-      const { value: tick = 0 } = await $.state.get(SHIM)
-      w = cols || BAR_FALLBACK
-      const { titleW, barW, showTitle, showPct } = bandLayout(w - 2, p.title.length, label.length, pct.length)
-      // Half cells, so the fill moves in half steps: a half block '▌' ends it mid-cell.
-      const total = barW * 2
-      let halves = Math.round((done / n) * total)
-      if (done > 0) halves = Math.max(1, halves)
-      if (done < n) halves = Math.min(halves, total - 1)
-      const fillC = Math.floor(halves / 2)
-      const cap = halves % 2 === 1
-      const used = fillC + (cap ? 1 : 0)
-      const cells = Array.from({ length: fillC }, (_, i) => mix(P_LIGHT, P_DEEP, fillC > 1 ? i / (fillC - 1) : 1))
-      const rest = Math.max(0, barW - used)
-      const len = now ? Math.min(3, rest) : 0
-      const room = rest - len
-      const step = room ? (tick * 2) % (2 * room) : 0
-      const pos = step <= room ? step : 2 * room - step
-      row = (
-        <Box key="plan-row" flexDirection="row" gap={1} width={w}>
-          <Text color={P_DEEP}>●</Text>
-          {showTitle ? (
-            <Box width={titleW} flexShrink={0}>
-              <Text bold wrap="truncate-end">
-                {cut(p.title, titleW)}
-              </Text>
-            </Box>
-          ) : null}
-          {barW ? (
-            <Box key="plan-bar" flexShrink={0}>
-              <Text>
-                {cells.map((c, i) => (
-                  <Text key={`f-${i}`} color={c}>
-                    █
-                  </Text>
-                ))}
-                {cap ? <Text color={P_DEEP}>▌</Text> : null}
-                <Text dimColor>{'━'.repeat(len ? pos : rest)}</Text>
-                {Array.from({ length: len }, (_, i) => (
-                  <Text key={`m-${i}`} color={PULSE}>
-                    ━
-                  </Text>
-                ))}
-                <Text dimColor>{'━'.repeat(len ? room - pos : 0)}</Text>
-              </Text>
-            </Box>
-          ) : null}
-          <Text bold color={P_MID}>{label}</Text>
-          {showPct ? <Text dimColor>{pct}</Text> : null}
-          {toggle}
-          {dismiss}
-        </Box>
-      )
-    }
+    // One look on every surface: the Cache bar of 10 emoji cells (green above half done or when complete, yellow below, never red).
+    w = cols || BAR_FALLBACK
+    const { value: tick = 0 } = await $.state.get(SHIM)
+    const { titleW, barW, showTitle, showPct } = bandLayout(w - 2, p.title.length, label.length, pct.length)
+    row = (
+      <Box key="plan-row" flexDirection="row" gap={1} width={w}>
+        <Text color={P_DEEP}>●</Text>
+        {showTitle ? (
+          <Box width={titleW} flexShrink={0}>
+            <Text bold wrap="truncate-end">
+              {cut(p.title, titleW)}
+            </Text>
+          </Box>
+        ) : null}
+        {barW ? (
+          <Box key="plan-bar" flexShrink={0}>
+            <Text>{cacheStyleBar(done / n, 'done', barW, now ? tick : undefined).text}</Text>
+          </Box>
+        ) : null}
+        <Text bold color={P_MID}>{label}</Text>
+        {showPct ? <Text dimColor>{pct}</Text> : null}
+        {toggle}
+        {dismiss}
+      </Box>
+    )
     // Expanded: one line per step. Done in dim green with the time it was done, the one in progress bold purple, the rest dim.
     const stepRows = planOpen
       ? p.steps.map((st, i) => {

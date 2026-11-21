@@ -6,6 +6,11 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-11-21
+
+### Changed
+- mk-progress 0.9.5: every bar (task bar above the prompt, subagent cards) drawn in the Cache style: 10 emoji cells 🟩/🟨/🟥 with ⬜ empty, green/yellow/red by state, only the tip of a working bar blinks.
+
 ## [0.6.4] - 2026-11-21
 
 ### Changed

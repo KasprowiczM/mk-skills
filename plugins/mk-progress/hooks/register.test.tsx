@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { bandLayout } from './layout'
+import { BAR_CELLS, bandLayout, barColor, cacheStyleBar } from './layout'
 
 /** The `on` a test body is handed. */
 type On = Parameters<NonNullable<Parameters<typeof test>[2]>>[1]
@@ -132,10 +132,6 @@ function rig(on: On, files: Record<string, string>) {
 
 /** What the band says: the drawing's alt text on desktop, every text in the terminal. */
 async function bandSays(v: { find: (q: object) => Promise<unknown>; findAll: (q: object) => Promise<unknown[]> }, surface: 'desktop' | 'terminal') {
-  if (surface === 'desktop') {
-    const svg = (await v.find({ type: 'Svg' })) as { props: { alt?: string } } | undefined
-    return svg ? String(svg.props.alt) : ''
-  }
   return ((await v.findAll({ type: 'Text' })) as { text: string }[]).map(t => t.text).join(' ')
 }
 
@@ -524,53 +520,39 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect('*/.claude/mods/.open-mk-progress-sess1' in files, 'request file removed').toBe(false)
   })
 
-  test(`each card has one thin thin bar: gliding while it works, a full green or red line when over (${surface})`, { timeoutMs: 30000 }, async ($, on) => {
+  test(`each card has one Cache bar: yellow with a blinking tip while it works, full green or red when over (${surface})`, { timeoutMs: 30000 }, async ($, on) => {
     const { clock } = rig(on, {})
     await $.session.start({ source: 'startup', cwd: '/home/test/work', surface, isInteractive: true } as never)
     await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'Build the landing page', subagentType: 'general-purpose' } as never)
     await $.agent.spawn({ tool_use_id: 's2', prompt: 'x', description: 'Design the graphics', subagentType: 'general-purpose' } as never)
     await clock.settle()
     const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props() })
-    if (surface === 'desktop') {
-      const bars = (await v.findAll({ type: 'Svg' })).filter(b => b.props.alt === 'Working')
-      expect(bars, 'one bar per card').toHaveLength(2)
-      const src = String(bars[0]!.props.source)
-      expect(src, 'working: a 6 px track').toContain('height="6"')
-      expect(src, 'working: an 8 px piece').toContain('height="8"')
-      expect(src, 'the piece glides').toContain('@keyframes mv0')
-      expect(src, 'with a highlight').toContain('@keyframes gl0')
-      expect(src, 'no dither sparkles').not.toContain('class="s0"')
-      expect(src, 'reduced motion stops it').toContain('prefers-reduced-motion')
-      await $.turn.complete({ answer: 'ok', agentId: 'agent-a1', reason: 'answer', durationMs: 1, isAborted: false, turnId: 't1' } as never)
-      await $.turn.complete({ answer: 'no', agentId: 'agent-a2', reason: 'error', durationMs: 1, isAborted: false, turnId: 't2' } as never)
-      await clock.settle()
-      const done = String((await v.findAll({ type: 'Svg' })).find(b => b.props.alt === 'Done')?.props.source)
-      expect(done, 'done: full green line').toContain('#16a34a')
-      expect(done, 'done: still').not.toContain('@keyframes mv')
-      expect(done, 'done: a solid 9 px line, 1.5 times the 6 px track').toMatch(/<rect width="\d+" height="9"/)
-      expect(done, 'done and working differ in thickness').not.toContain('height="6"')
-      expect(String((await v.findAll({ type: 'Svg' })).find(b => b.props.alt === 'Stopped')?.props.source), 'stopped: full red line').toContain('#dc2626')
-      return
-    }
-    // The terminal: a dim heavy track with a bright piece while it works, a full block line when over.
-    expect(await v.find({ key: 'bar-agent-a1' }), 'the card has a bar').toBeDefined()
-    expect(await v.find({ type: 'Text', text: /^─+$/ }), 'no thin line any more').toBeUndefined()
-    expect(await v.find({ type: 'Text', text: /^━+$/ }), 'working: a dim heavy track').toBeDefined()
-    expect((await v.findAll({ type: 'Text', text: /^━$/ })).some(t => t.props.color === '#d97757' || t.props.color === 'text'), 'working: a bright piece of the same glyph').toBe(true)
-    const place = async () => (await v.findAll({ type: 'Text', text: /^━+$/ })).filter(t => t.props.dimColor).map(t => String(t.text).length).join(',')
+    // The Cache bar on every surface: emoji cells, the working tip blinks, finished bars are static green or red.
+    const barOf = async (id: string) => String(((await v.find({ key: `bar-${id}` })) as { text?: string } | undefined)?.text ?? '')
+    const cells = (t: string) => [...t]
+    expect((await v.findAll({ type: 'Svg' })).filter(b => ['Working', 'Done', 'Stopped'].includes(String(b.props.alt))), 'no Svg bar any more').toHaveLength(0)
     const seen = new Set<string>()
     for (let i = 0; i < 6; i += 1) {
-      seen.add(await place())
+      seen.add(await barOf('agent-a1'))
       await clock.advance(300)
     }
-    expect(seen.size > 1, 'the piece glides along the track').toBe(true)
+    for (const t of seen) {
+      expect(cells(t).length, 'a bar of emoji cells').toBeGreaterThanOrEqual(3)
+      expect(/^[🟨⬜]+$/u.test(t), 'working: yellow cells on white ones: ' + t).toBe(true)
+      expect(cells(t)[0], 'the solid part fills from the left').toBe('🟨')
+    }
+    expect(seen.size, 'only the tip blinks').toBe(2)
     await $.turn.complete({ answer: 'ok', agentId: 'agent-a1', reason: 'answer', durationMs: 1, isAborted: false, turnId: 't1' } as never)
     await $.turn.complete({ answer: 'no', agentId: 'agent-a2', reason: 'error', durationMs: 1, isAborted: false, turnId: 't2' } as never)
     await clock.settle()
-    const lineColor = async (id: string) => ((await v.find({ key: `bar-${id}` })) as { children: { props: { color?: string } }[] } | undefined)?.children[0]?.props.color
-    expect(await lineColor('agent-a1'), 'done: green line').toBe('#16a34a')
-    expect(await v.find({ type: 'Text', text: /^█{6,}$/ }), 'done and stopped: a thick solid line of full blocks').toBeDefined()
-    expect(await lineColor('agent-a2'), 'stopped: red line').toBe('#dc2626')
+    const doneBars = new Set<string>()
+    for (let i = 0; i < 4; i += 1) {
+      doneBars.add(await barOf('agent-a1'))
+      await clock.advance(300)
+    }
+    expect(doneBars.size, 'done: static').toBe(1)
+    expect(/^🟩+$/u.test(await barOf('agent-a1')), 'done: full green').toBe(true)
+    expect(/^🟥+$/u.test(await barOf('agent-a2')), 'stopped: full red').toBe(true)
   })
 
   test(`Hide in the pane writes the shared flag and closes it (${surface})`, { timeoutMs: 30000 }, async ($, on) => {
@@ -626,39 +608,15 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(says, 'count').toContain('Tasks 2/4')
     expect(says, 'percent').toContain('50%')
     expect(await v.find({ type: 'Text', text: /^Now: Build the slides$/ }), 'current step under the bar').toBeDefined()
-    if (surface === 'desktop') {
-      const svg = String((await v.find({ type: 'Svg' }))!.props.source)
-      expect(svg, 'purple gradient').toContain('#6d28d9')
-      expect(svg, 'no dither sparkles').not.toContain('class="s0"')
-      expect(svg, 'no shimmer on the fill').not.toContain('class="sh"')
-      expect(svg, 'no separate glow segment').not.toContain('class="lv"')
-      expect(svg, 'a bright piece glides over the unfinished part').toContain('class="mp"')
-      expect(svg, 'reduced motion stops it').toContain('prefers-reduced-motion')
-      expect(svg, 'the unfinished track is 8 px').toMatch(/class="k" y="5" width="\d+" height="8"/)
-      expect(svg, 'the finished fill is 12 px, 1.5 times that').toMatch(/<rect y="3" width="\d+" height="12"[^>]*fill="url\(#hdb-g\)"/)
-      expect(svg, 'the piece is as thick as the track').toMatch(/class="mp" x="\d+" y="5" width="\d+" height="8"/)
-      const fillW = Number(/<rect y="3" width="(\d+)" height="12"/.exec(svg)![1])
-      expect(Number(/class="mp" x="(\d+)"/.exec(svg)![1]), 'the piece starts where the fill ends').toBe(fillW)
-      expect(svg, 'tick marks stay on the unfinished track').toContain('class="tk"')
-    } else {
-      const fill = async () => ((await v.findAll({ type: 'Text', text: /^█$/ })) as { props: { color?: string } }[]).map(c => c.props.color)
-      const cells = await fill()
-      expect(cells.length > 10, 'the finished part is thick full blocks').toBe(true)
-      expect(cells[0], 'light purple at the start').toBe('#9f7aea')
-      expect(cells[cells.length - 1], 'deep purple at the head').toBe('#8146de')
-      expect((await v.find({ type: 'Text', text: /^▌$/ }))?.props.color, 'half block at the head').toBe('#8146de')
-      expect(await v.find({ type: 'Text', text: /^━+$/ }), 'the unfinished track is the dim heavy line').toBeDefined()
-      expect((await v.findAll({ type: 'Text', text: /^━$/ })).filter(t => t.props.color === 'text'), 'a piece of 3 bright cells').toHaveLength(3)
-      const pieceAt = new Set<string>()
-      const fills = new Set<string>()
-      for (let i = 0; i < 10; i += 1) {
-        pieceAt.add((await v.findAll({ type: 'Text', text: /^━+$/ })).filter(t => t.props.dimColor).map(t => String(t.text).length).join(','))
-        fills.add((await fill()).join(''))
-        await clock.advance(350)
-      }
-      expect(pieceAt.size > 3, 'the piece glides over the unfinished cells').toBe(true)
-      expect(fills.size, 'the finished part is static').toBe(1)
+    // 2 of 4: five yellow cells (done is yellow up to half), the tip blinking while a step is in progress.
+    const bar = async () => String(((await v.find({ key: 'plan-bar' })) as { text?: string } | undefined)?.text ?? '')
+    const frames = new Set<string>()
+    for (let i = 0; i < 10; i += 1) {
+      frames.add(await bar())
+      await clock.advance(350)
     }
+    expect([...frames].sort(), 'the tip blinks, the rest is still').toEqual(['🟨🟨🟨🟨⬜⬜⬜⬜⬜⬜', '🟨🟨🟨🟨🟨⬜⬜⬜⬜⬜'].sort())
+    expect(await v.find({ type: 'Svg' }), 'no Svg bar').toBeUndefined()
 
     // The bar follows the plan, not subagents: a running subagent adds nothing to it.
     await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'Build the slides', subagentType: 'general-purpose' } as never)
@@ -893,12 +851,12 @@ test('the task bar row fits its width: percent goes first, then the title, the c
       const l = bandLayout(w, title, label, pct)
       if (!l.barW) continue
       const parts = 4 + (l.showTitle ? 1 : 0) + (l.showPct ? 1 : 0)
-      const total = 2 + l.titleW + l.barW + label + (l.showPct ? pct : 0) + (parts - 1)
+      const total = 2 + l.titleW + l.barW * 2 + label + (l.showPct ? pct : 0) + (parts - 1)
       expect(total <= w, `${w} columns, ${title}-char title: ${total} wide`).toBe(true)
-      expect(l.barW >= 6, 'bar stays readable').toBe(true)
+      expect(l.barW >= 3 && l.barW <= BAR_CELLS, 'bar stays readable, at most 10 cells').toBe(true)
     }
   }
-  expect(bandLayout(80, 13, 9, 3), 'roomy: everything').toMatchObject({ showTitle: true, showPct: true, titleW: 13, barW: 45 })
+  expect(bandLayout(80, 13, 9, 3), 'roomy: everything').toMatchObject({ showTitle: true, showPct: true, titleW: 13, barW: 10 })
   expect(bandLayout(34, 13, 9, 3).showPct, 'narrow: no percent').toBe(false)
   expect(bandLayout(26, 13, 9, 3).showTitle, 'narrower: no title').toBe(false)
   expect(bandLayout(12, 13, 9, 3).barW, 'too narrow for a bar: none').toBe(0)
@@ -926,12 +884,12 @@ for (const surface of ALL) {
       expect(await v.find({ key: 'plan-dismiss' }), `dismiss button at ${cols}`).toBeDefined()
       expect(await allText(v as never), `count at ${cols}`).toContain('Tasks 2/4')
       expect(await v.find({ type: 'Text', text: /^Now: Build the slides$/ }), `step line at ${cols}`).toBeDefined()
-      if (surface === 'terminal') {
+      {
         const l = bandLayout(cols - 2, 'Make the deck'.length, 'Tasks 2/4'.length, '50%'.length)
         const glyphs = ((await v.find({ key: 'plan-bar' })) as { text: string } | undefined)?.text ?? ''
-        expect(glyphs.length, `bar glyphs at ${cols} columns`).toBe(l.barW)
-        expect(/^[█▌━]*$/.test(glyphs), 'full blocks done, heavy line to do').toBe(true)
-        expect(await v.find({ type: 'Svg' }), 'the terminal has no Svg').toBeUndefined()
+        expect([...glyphs].length, `bar cells at ${cols} columns`).toBe(l.barW)
+        expect(/^[🟩🟨🟥⬜]*$/u.test(glyphs), 'Cache emoji cells only').toBe(true)
+        expect(await v.find({ type: 'Svg' }), 'no Svg bar').toBeUndefined()
         expect(await v.find({ text: /^50%$/ }) !== undefined, `percent shown only where it fits (${cols})`).toBe(l.showPct)
       }
     }
@@ -1077,9 +1035,10 @@ test('terminal: a running card and a finished or stopped one are 4 rows, and Cla
     expect(art, `Clawd, glyph for glyph (${id})`).toEqual([' ▐▛█▜▌ ', '╶▜███▛╴', ' ╵╵ ╵╵ '])
     expect(Math.max(...art.map(r => String(r).length)), '7 columns').toBe(7)
   }
-  // The two done/stopped bars are full-block lines, the running one a dim heavy track.
-  expect(await v.find({ type: 'Text', text: /^█{6,}$/ }), 'done and stopped: thick').toBeDefined()
-  expect(await v.find({ type: 'Text', text: /^━+$/ }), 'running: the track').toBeDefined()
+  // The done bar is full green, the stopped one full red, the running one yellow cells on white ones.
+  expect(await v.find({ type: 'Text', text: /^🟩{3,}$/u }), 'done: green').toBeDefined()
+  expect(await v.find({ type: 'Text', text: /^🟥{3,}$/u }), 'stopped: red').toBeDefined()
+  expect(await v.find({ type: 'Text', text: /^[🟨⬜]+$/u }), 'running: yellow on white').toBeDefined()
 })
 
 test('desktop: the Svg crab lives on a 14 by 6 pixel grid, differs between frames, and fills its eye holes', { timeoutMs: 30000 }, async ($, on) => {
@@ -1110,15 +1069,26 @@ test('desktop: the Svg crab lives on a 14 by 6 pixel grid, differs between frame
   expect(eyeCounts.includes(2) && eyeCounts.includes(0), 'both open and blinking frames show up').toBe(true)
 })
 
-test('terminal band: a half block ends the fill mid-cell, and no sparkle remains in the Svg band', { timeoutMs: 30000 }, async ($, on) => {
-  const { clock } = rig(on, {})
-  await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'terminal', isInteractive: true } as never)
-  const callTool = $.tool.call as unknown as (input: unknown) => Promise<unknown>
-  await callTool({ tool: 'mcp__mk-progress__plan', tool_use_id: 'p1', title: 'Three', steps: [{ text: 'a', status: 'completed' }, { text: 'b', status: 'in_progress' }, { text: 'c', status: 'pending' }] })
-  await clock.settle()
-  const v = await $.ui.mount({ plugin: 'mk-progress', surface: 'terminal', component: 'AbovePrompt', props: bandProps(80) })
-  const cap = await v.find({ type: 'Text', text: /^▌$/ })
-  expect(cap?.props.color, 'half block in deep purple').toBe('#8146de')
+test('the Cache bar: 10 emoji cells, round to the nearest with at least one, colour by use, and a blinking tip while unfinished', () => {
+  expect(cacheStyleBar(0.5, 'left').text, 'half').toBe('🟨🟨🟨🟨🟨⬜⬜⬜⬜⬜')
+  expect(cacheStyleBar(0.02, 'left').text, 'at least one cell when anything is left').toBe('🟥⬜⬜⬜⬜⬜⬜⬜⬜⬜')
+  expect(cacheStyleBar(0, 'left').text, 'nothing').toBe('⬜'.repeat(10))
+  expect(cacheStyleBar(1, 'left').text, 'full').toBe('🟩'.repeat(10))
+  // Left (the Cache rule): green above half, yellow above a fifth, red below.
+  expect([0.9, 0.51, 0.5, 0.21, 0.2, 0.05].map(f => barColor(f, 'left'))).toEqual(['success', 'success', 'warning', 'warning', 'error', 'error'])
+  // Used: the same rule on what is left, so green under 50% used, yellow under 80%, red from 80%.
+  expect([0.1, 0.49, 0.5, 0.79, 0.8, 1].map(f => barColor(f, 'used'))).toEqual(['success', 'success', 'warning', 'warning', 'error', 'error'])
+  // Done: yellow until half, green above it and when complete, red only for failed work.
+  expect([0.1, 0.5, 0.51, 1].map(f => barColor(f, 'done'))).toEqual(['warning', 'warning', 'success', 'success'])
+  expect(barColor(0.9, 'failed')).toBe('error')
+  expect(cacheStyleBar(0.4, 'done', 4).text, 'other widths').toBe('🟨🟨⬜⬜')
+  // The tip: even ticks show the colour block, odd ticks blank the last filled cell; a complete or tickless bar never moves.
+  expect(cacheStyleBar(0.6, 'done', 10, 0).text).toBe('🟩🟩🟩🟩🟩🟩⬜⬜⬜⬜')
+  expect(cacheStyleBar(0.6, 'done', 10, 1).text).toBe('🟩🟩🟩🟩🟩⬜⬜⬜⬜⬜')
+  expect(cacheStyleBar(0.6, 'done', 10, 2).text).toBe(cacheStyleBar(0.6, 'done', 10, 0).text)
+  expect(cacheStyleBar(0, 'done', 10, 0).text, 'empty in progress: the first cell blinks in').toBe('🟨' + '⬜'.repeat(9))
+  expect(cacheStyleBar(0, 'done', 10, 1).text).toBe('⬜'.repeat(10))
+  for (const t of [0, 1, 2, 3]) expect(cacheStyleBar(1, 'done', 10, t).text, 'complete: static').toBe('🟩'.repeat(10))
 })
 
 // ---------- Colours that read on a light page and on a dark one ----------
@@ -1176,7 +1146,7 @@ test('every colour the pane and band draw holds 3:1 on white and on #1e1e1e', { 
     await v.unmount()
   }
   // Orange, green, red, amber, the five model colours, the kind tags and the purples: all of them were drawn.
-  for (const c of ['#d97757', '#16a34a', '#dc2626', '#b98d06', '#3b82f6', '#12a494', '#ec4899', '#97928e', '#9f7aea', '#8b5cf6', '#8146de', '#c68704']) {
+  for (const c of ['#d97757', '#16a34a', '#dc2626', '#b98d06', '#3b82f6', '#12a494', '#ec4899', '#97928e', '#8b5cf6', '#8146de', '#c68704']) {
     expect(colours.has(c), c + ' was drawn').toBe(true)
   }
   for (const c of colours) {
