@@ -2,8 +2,8 @@
 
 A Claude Code mod that shows how far Claude is, in the terminal and in Claude Desktop (Code tab):
 
-- **Task bar above the prompt.** A purple progress bar that fills as Claude ticks off its plan (`Tasks 2/4`, percent, the step in progress under it). It follows `TodoWrite`, `TaskCreate` / `TaskUpdate` and the mod's own tool `mcp__mk-progress__plan`, which Claude loads on demand (it is deferred, so it costs no tokens until used). SVG on Desktop, block glyphs in the terminal. The ✕ hides the bar until the plan changes again.
-- **Subagent pane.** Compact, 48 columns wide. One line on top: the number of subagents, chat cost, tokens and time, and Hide. Under it a row per **model with its tokens and estimated cost**, led by a dot in the model's colour. Then one slim heading per group (Running green, Finished amber, Stopped red) and borderless cards: description with time and state, **model and effort** in the model's colour ("sonnet·high", "inherit" when the engine gave none) with type and tokens, the live step, and a thin animated bar (the style of the macOS Updates bars: a heavy line, a piece gliding along it in the helper's model colour, a full green or red line when over). The ▸ button opens the step list, where repeated steps fold into "×3". The Clawd crab beside each card wears the colour of its model (Opus orange, Sonnet blue, Haiku teal, Fable pink, grey until the model is known). Not every number exists on every build; what is missing is left out.
+- **Task bar above the prompt.** A purple progress bar that fills as Claude ticks off its plan (`Tasks 2/4`, percent, the step in progress under it). Done is drawn thick and work still to do thin (a heavy `━` line for the done part and a thin `─` line for the step in progress and the rest in the terminal; an 8 px fill against a 3 px track in Svg), with a bright piece sweeping along the thin in-progress segment. The ▸ next to the ✕ unfolds the plan: one line per step, `✓` done (with the time), `◐` in progress, `○` still to do. It follows `TodoWrite`, `TaskCreate` / `TaskUpdate` and the mod's own tool `mcp__mk-progress__plan`, which Claude loads on demand (it is deferred, so it costs no tokens until used). SVG on Desktop, block glyphs in the terminal. The ✕ hides the bar until the plan changes again.
+- **Subagent pane.** Compact, 48 columns wide. One line on top: the number of subagents, chat cost, tokens and time, and Hide. Under it a row per **model with its tokens and estimated cost**, led by a dot in the model's colour. Then one slim heading per group (Running green, Finished amber, Stopped red) and borderless cards: description with time and state, **model and effort** in the model's colour ("sonnet·high", "inherit" when the engine gave none) with type and tokens, the live step, and a thin animated bar (the style of the macOS Updates bars: a heavy line, a piece gliding along it in the helper's model colour, a full green or red line when over). A working card has a thin line with a thicker piece gliding along it; a finished or stopped one a thick solid green or red line. A collapsed card keeps the last 3 earlier steps as dim lines under the current step, and a "▸ all N steps" button opens the full list, where repeated steps fold into "×3". At the top of the pane a "Tasks d/n" group shows the plan: the done steps in one "✓ d done" line (click to list them), the step in progress highlighted, then the pending ones. The Clawd crab beside each card (a small 5 by 2 glyph crab, with a dim `#N` seat tag under it to tell cards on the same model apart) wears the colour of its model (Opus orange, Sonnet blue, Haiku teal, Fable pink, grey until the model is known). Not every number exists on every build; what is missing is left out.
 - **Colours.** The engine does not tell a mod the theme, so the terminal uses single mid-tone colours that keep 3:1 contrast on white and on #1e1e1e; Svg drawings switch to brighter shades on a dark page with CSS.
 
 Forked from BenAI's Helper Desk (original author: Ben AI), renamed and patched.
@@ -46,7 +46,7 @@ Or from a shell: `claude plugin marketplace add KasprowiczM/mk-skills` then `cla
 
 **Terminal (CLI)**
 
-1. `claude plugin list` shows `mk-progress@mk-skills` at 0.8.0 and enabled. Start `claude` (or run `/reload-plugins`).
+1. `claude plugin list` shows `mk-progress@mk-skills` at 0.9.0 and enabled. Start `claude` (or run `/reload-plugins`).
 2. Ask: "Make a 3-step plan with the progress tool, then do it: list files in /tmp, count them, print the count." The purple bar appears above the prompt and fills; ✕ hides it.
 3. Ask for two parallel subagents ("use two Explore agents to look at ..."). Type `/mk-progress` (a narrow terminal does not seat the pane by itself): cards show model, effort, tokens; the top rows show tokens and cost per model.
 4. Narrow the window to about 80 columns and then 40: the bar drops its percent, then its title, and never wraps.
@@ -61,7 +61,7 @@ Or from a shell: `claude plugin marketplace add KasprowiczM/mk-skills` then `cla
 ```
 claude plugin test plugins/mk-progress
 claude plugin validate plugins/mk-progress
-claude plugin validate .   # from the repository root
+claude plugin validate .
 ```
 
 The tests draw the bar and the pane on terminal, desktop, vscode and mobile, at wide and narrow widths and with nothing to show.
@@ -73,3 +73,10 @@ The tests draw the bar and the pane on terminal, desktop, vscode and mobile, at 
 - **Pane or bar missing, mod seems off.** Check `~/.claude/mods/switches.json` for `"mk-progress": false` or `"mk-progress:hidden": true`.
 - **Model or effort reads "inherit".** The engine reported none for that agent (a teammate in its own terminal pane, say).
 - **Something else.** `~/.claude/mods-logs/mk-progress.log`, or `claude --debug`.
+
+## Changes
+
+- **0.9.0.** Header reads "N subagents in this chat" with labelled stats (chat cost, subagent tok, time), a "By model" heading over the model rows ("tokens" written out when there is room), cards keep the agent type at 48 columns, the running step reads "Step N · …", and finished or stopped cards end in "✓ Done · N steps" / "✗ Stopped before it finished · N steps". Clawd is half the size (5 by 2 glyphs, 10 by 4 pixel Svg). Collapsed cards bring back the last 3 steps and a labelled "▸ all N steps" / "▾ hide steps" toggle. The task bar unfolds into the plan's steps (done with time, in progress, pending) and the pane has a "Tasks d/n" group. Done is thick and working is thin on the task bar and card bars, with a brighter moving piece on the in-progress part.
+- **0.8.0.** Compact pane: 48 columns, one-line stats, tokens and cost per model moved to the top, slim group headings, borderless cards of 4 rows (running) and 3 rows (finished, stopped) with no scrolling for a handful of agents. Thin macOS-Updates-style bars on cards and on the task bar (a gliding piece, a travelling pulse, a glowing step in progress; no more dither sparkles). The crab is Clawd from the Claude Code start-up screen, drawn from quadrant glyphs in the terminal and from the same glyphs as pixels in Svg, coloured by model. Repeated steps fold into "×N". Colours hold 3:1 contrast on light and dark pages.
+- **0.7.0.** Unknown MCP servers are named from their tool id ("Acme Crm", never "Connector"); the built-in table is trimmed to common servers. Model and effort on every subagent card, tokens and cost per model in the pane footer. Privacy: no raw Bash commands, `redact()` on all displayed and saved text. Dead platform helpers removed. Task bar fits narrow terminals; a hint when the pane cannot seat; tests on four surfaces.
+- **0.6.0.** Renamed from helper-desk to mk-progress: plugin, marketplace, pane, `/mk-progress`, tool `mcp__mk-progress__plan`, log file and switches keys. Plan nudge after 3 calls and only without a plan, plan tool behind ToolSearch, log rotation, 7-day plan-file sweep, 15 s switches poll.

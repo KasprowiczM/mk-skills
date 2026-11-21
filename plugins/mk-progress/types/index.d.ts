@@ -58,7 +58,7 @@ export type PlanStatus = 'pending' | 'in_progress' | 'completed'
 /** What the plan band draws: the chat's plan, and whether the band shows it now. */
 export type BandPlan = {
   title: string
-  steps: { text: string; status: PlanStatus }[]
+  steps: { text: string; status: PlanStatus; /** ISO time the step was completed, when known. */ doneAt?: string }[]
   /** False once a finished plan has held at 100% for 20 s, or for an empty list. */
   shown: boolean
 }
@@ -81,6 +81,8 @@ declare module 'claude-code' {
       plan: BandPlan | null
       /** Shimmer tick for the step in progress; it counts only while one is in progress. */
       shimmer: number
+      /** True while the task bar shows the plan's steps one per line. */
+      planOpen: boolean
     }
   }
 }

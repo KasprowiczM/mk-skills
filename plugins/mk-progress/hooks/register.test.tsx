@@ -179,7 +179,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(await v.find({ type: 'Text', text: /^Running 2\s*$/ }), 'Running heading with its count').toBeDefined()
     const runHead = await v.find({ key: 'head-running' })
     expect(runHead?.props.backgroundColor, 'no filled box behind the heading').toBeUndefined()
-    expect((await v.find({ type: 'Text', text: /^2 subagents$/ }))?.props.color, 'title orange while any run').toBe('#d97757')
+    expect((await v.find({ type: 'Text', text: /^2 subagents in this chat$/ }))?.props.color, 'title orange while any run').toBe('#d97757')
     expect((await v.find({ type: 'Text', text: /^Running 2\s*$/ }))?.props.color, 'Running is green').toBe('#16a34a')
     expect(await v.find({ text: /^haiku$/ }), 'model, no effort known yet').toBeDefined()
     expect(await v.find({ text: /^ · Explore$/ }), 'type after it').toBeDefined()
@@ -189,7 +189,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(await v.find({ key: 'stat-time' }), 'time stat').toBeDefined()
     expect(await v.find({ key: 'stat-cost' }), 'chat cost stat').toBeDefined()
     expect(await v.find({ text: /\$0\.42/ }), 'chat cost from the engine').toBeDefined()
-    expect(await v.find({ type: 'Text', text: /^chat$/ }) ?? (await v.find({ type: 'Text', text: /^ chat$/ })), 'its label').toBeDefined()
+    expect(await v.find({ type: 'Text', text: /^ chat cost$/ }), 'its label').toBeDefined()
     expect(await v.find({ key: 'stat-tokens' }), 'no tokens stat before any usage').toBeUndefined()
     expect(statuses.every(t => t === undefined), 'no footer status line').toBe(true)
 
@@ -220,10 +220,10 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(agents, 'three spawned').toHaveLength(3)
     const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props() })
     if (surface === 'terminal') {
-      const heads = await v.findAll({ type: 'Text', text: /^ ▐▛███▜▌ $/ })
+      const heads = await v.findAll({ type: 'Text', text: /^▟▛█▜▙$/ })
       expect(heads.map(h => h.props.color), 'opus orange, sonnet blue, haiku teal').toEqual(['#d97757', '#3b82f6', '#12a494'])
       expect(await v.findAll({ type: 'Svg' }), 'no Svg on the terminal').toHaveLength(0)
-      const legs = async () => String((await v.find({ key: 'pet-agent-a1-r2' }))?.text)
+      const legs = async () => String((await v.find({ key: 'pet-agent-a1-r1' }))?.text)
       const before = await legs()
       await clock.advance(600)
       expect((await legs()) !== before, 'a running glyph pet moves its legs').toBe(true)
@@ -247,7 +247,8 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(String(got[2]!.props.source), 'and a brighter teal on a dark page').toContain('prefers-color-scheme: dark')
     expect(String(got[0]!.props.source).includes('#2b1d16'), 'eyes filled').toBe(true)
     expect(String(got[0]!.props.source).length < 131072, 'under the Svg limit').toBe(true)
-    expect(Number(got[0]!.props.width), 'about 9 columns wide').toBe(58)
+    expect(Number(got[0]!.props.width), 'about 5 columns wide').toBe(32)
+    expect(Number(got[0]!.props.height), 'two text rows tall').toBe(32)
 
     // Running: the frame changes on the clock tick.
     const frames = new Set<string>()
@@ -263,7 +264,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     // The finished crab sits in the Finished group, after the running ones.
     const still = async () => String((await pets()).at(-1)!.props.source)
     const first = await still()
-    expect(first, 'a finished pet stands: three rows, 18 by 6 pixels').toContain('viewBox="0 0 18 6"')
+    expect(first, 'a finished pet stands: two rows, 10 by 4 pixels').toContain('viewBox="0 0 10 4"')
     await clock.advance(600)
     expect(await still(), 'a finished pet is still').toBe(first)
     await clock.advance(600)
@@ -280,7 +281,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props() })
     const seen = async () =>
       surface === 'terminal'
-        ? String((await v.findAll({ type: 'Text', text: /^( ▐(▛███▜|█████)▌ |▗▐▛███▜▌▖)$/ }))[0]?.props.color)
+        ? String((await v.findAll({ type: 'Text', text: /^(▟(▛█▜|███)▙|█▛█▜█)$/ }))[0]?.props.color)
         : String((await v.findAll({ type: 'Svg' })).find(p => String(p.props.alt).startsWith('Claude crab'))?.props.source)
     const alt = async () => String((await v.findAll({ type: 'Svg' })).find(p => String(p.props.alt).startsWith('Claude crab'))?.props.alt)
     expect(await seen(), 'unknown: stone grey').toContain('#97928e')
@@ -319,15 +320,15 @@ for (const surface of ['desktop', 'terminal'] as const) {
     expect(await v.find({ text: /^ · general-purpose$/ }), 'its type').toBeDefined()
     expect(await v.find({ key: 'models' }), 'the model block at the top').toBeDefined()
     expect(await v.find({ text: /^sonnet 5\.5$/ }), 'sonnet row').toBeDefined()
-    expect(await v.find({ text: /^10k tok · ~\$0\.10$/ }), 'sonnet tokens and cost').toBeDefined()
+    expect(await v.find({ text: /^10k tokens · ~\$0\.10$/ }), 'sonnet tokens and cost').toBeDefined()
     expect(await v.find({ text: /^haiku 4\.5$/ }), 'haiku row').toBeDefined()
-    expect(await v.find({ text: /^4k tok · ~\$0\.05$/ }), 'haiku adds up over both agents').toBeDefined()
+    expect(await v.find({ text: /^4k tokens · ~\$0\.05$/ }), 'haiku adds up over both agents').toBeDefined()
     expect(await v.find({ key: 'models-caveat' }), 'no caveat on a model row').toBeUndefined()
     expect(((await v.find({ key: 'models-rule' })) as { text: string }).text, 'the closing rule carries the caveat').toMatch(/^─ ~\$ = estimate, not the bill ─+$/)
     // The block sits under the one-line stats and before the first group heading.
     const order = ((await v.findAll({ type: 'Text' })) as { text: string }[]).map(t => t.text)
     const at = (re: RegExp) => order.findIndex(t => re.test(t))
-    expect(at(/^sonnet 5\.5$/) > at(/^2 subagents$/), 'models follow the header').toBe(true)
+    expect(at(/^sonnet 5\.5$/) > at(/^2 subagents in this chat$/), 'models follow the header').toBe(true)
     expect(at(/^sonnet 5\.5$/) < at(/^Running 2\s*$/), 'models come before the first group').toBe(true)
     expect(at(/^─ ~\$ = estimate/) > at(/^haiku 4\.5$/) && at(/^─ ~\$ = estimate/) < at(/^Running 2\s*$/), 'a thin rule closes the block').toBe(true)
   })
@@ -461,13 +462,16 @@ for (const surface of ['desktop', 'terminal'] as const) {
 
     const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props(70) })
     expect(await v.find({ text: /^Writing research\.md$/ }), 'live line').toBeDefined()
-    expect(await v.find({ text: /^6 $/ }), 'step count beside the live line').toBeDefined()
-    expect(await v.find({ text: /Opening docs\.example\.com/ }), 'no history lines on the card').toBeUndefined()
+    expect(await v.find({ text: /^Step 6 · $/ }), 'the word Step and its number beside the live line').toBeDefined()
+    expect(await v.find({ text: /Opening docs\.example\.com/ }), 'the step before the live one is history').toBeDefined()
+    const hist = (await v.findAll({ type: 'Text', text: /^ {2}\S/ })).map(t => String(t.text))
+    expect(hist.length, `up to 3 earlier steps as dim lines: ${hist.join('|')}`).toBe(3)
     expect(await v.find({ text: /pre-outline\.md/ }), 'collapsed hides older steps').toBeUndefined()
-    expect((await v.find({ key: 'steps-agent-a1' }))?.text ?? '', 'toggle with the count').toBe('▸ 6')
+    expect((await v.find({ key: 'steps-agent-a1' }))?.text ?? '', 'labelled toggle').toBe('▸ all 6 steps')
 
     await v.press({ key: 'steps-agent-a1' })
-    expect((await v.find({ key: 'steps-agent-a1' }))?.text ?? '', 'toggle open').toBe('▾ 6')
+    expect((await v.find({ key: 'steps-agent-a1' }))?.text ?? '', 'toggle open').toBe('▾ hide steps')
+    expect(await v.find({ text: /Opening docs\.example\.com/ }), 'the history is hidden while the list is open').toBeUndefined()
     expect(await v.find({ text: /^File read$/ }), 'kind tag').toBeDefined()
     expect(await v.find({ text: /^pre-outline\.md/ }), 'first step listed').toBeDefined()
     expect(await v.find({ text: /YouTube\/videos\/mods/ }), 'folder in dim text').toBeDefined()
@@ -530,8 +534,9 @@ for (const surface of ['desktop', 'terminal'] as const) {
     if (surface === 'desktop') {
       const bars = (await v.findAll({ type: 'Svg' })).filter(b => b.props.alt === 'Working')
       expect(bars, 'one bar per card').toHaveLength(2)
-      expect(bars[0]!.props.height, 'thin: 4 pixels').toBe(4)
       const src = String(bars[0]!.props.source)
+      expect(src, 'working: a thin 2 px track').toContain('height="2"')
+      expect(src, 'working: a 4 px piece').toContain('height="4"')
       expect(src, 'the piece glides').toContain('@keyframes mv0')
       expect(src, 'with a highlight').toContain('@keyframes gl0')
       expect(src, 'no dither sparkles').not.toContain('class="s0"')
@@ -542,13 +547,16 @@ for (const surface of ['desktop', 'terminal'] as const) {
       const done = String((await v.findAll({ type: 'Svg' })).find(b => b.props.alt === 'Done')?.props.source)
       expect(done, 'done: full green line').toContain('#16a34a')
       expect(done, 'done: still').not.toContain('@keyframes mv')
+      expect(done, 'done: a thick 6 px line').toContain('height="6"')
+      expect(done, 'done and working differ in thickness').not.toContain('height="2"')
       expect(String((await v.findAll({ type: 'Svg' })).find(b => b.props.alt === 'Stopped')?.props.source), 'stopped: full red line').toContain('#dc2626')
       return
     }
     // The terminal: a slim heavy line, no thick blocks.
     expect(await v.find({ key: 'bar-agent-a1' }), 'the card has a bar').toBeDefined()
     expect(await v.find({ type: 'Text', text: /^[█░▓]{4,}$/ }), 'no thick block bar').toBeUndefined()
-    expect(await v.find({ type: 'Text', text: /^━+$/ }), 'dim track of the heavy line').toBeDefined()
+    expect(await v.find({ type: 'Text', text: /^─+$/ }), 'working: the track is the thin glyph').toBeDefined()
+    expect(await v.find({ type: 'Text', text: /^━{6,}$/ }), 'done and stopped: a thick solid line').toBeDefined()
     expect(await v.find({ type: 'Text', text: /^[╺━╸]$/ }), 'a capped piece').toBeDefined()
     const place = async () => ((await v.find({ key: 'bar-agent-a1' })) as { text: string } | undefined)?.text.indexOf('╺')
     const seen = new Set<number | undefined>()
@@ -625,18 +633,20 @@ for (const surface of ['desktop', 'terminal'] as const) {
       expect(svg, 'a highlight sweeps the fill').toContain('class="sh"')
       expect(svg, 'the step in progress glows').toContain('class="lv"')
       expect(svg, 'and a shine runs along it').toContain('class="lw"')
-      expect(svg, 'slim track').toContain('height="6"')
+      expect(svg, 'done is thick').toContain('height="8"')
+      expect(svg, 'in progress and the rest are thin').toContain('height="3"')
     } else {
       expect(await v.find({ text: /[█▓░]/ }), 'no thick blocks in the bar').toBeUndefined()
-      const cellsNow = async () => ((await v.findAll({ type: 'Text', text: /^━$/ })) as { props: { color?: string } }[]).filter(c => c.props.color)
+      const cellsNow = async () => ((await v.findAll({ type: 'Text', text: /^[━─]$/ })) as { props: { color?: string } }[]).filter(c => c.props.color)
       const cells = await cellsNow()
       // Half the bar is fill (a cap ends it mid-cell at this width), then the step in progress up to 3/4.
-      const FILL = 22
+      const FILL = 21
       expect(cells.length, 'fill and in-progress cells').toBeGreaterThan(FILL)
       expect(['#9f7aea', 'text'], 'light purple at the start (or the pulse)').toContain(cells[0]!.props.color)
       expect(['#8146de', 'text'], 'deep purple at the head (or the pulse)').toContain(cells[FILL - 1]!.props.color)
       expect((await v.find({ type: 'Text', text: /^╸$/ }))?.props.color, 'half cap at the head').toBe('#8146de')
-      expect(await v.find({ type: 'Text', text: /^━+$/ }), 'the dim track is the same glyph').toBeDefined()
+      expect(await v.find({ type: 'Text', text: /^─+$/ }), 'the dim track is the thin glyph').toBeDefined()
+      expect(await v.find({ type: 'Text', text: /^─$/ }), 'the in-progress segment is thin too').toBeDefined()
       const pulseAt = new Set<number>()
       const glow = new Set<string>()
       for (let i = 0; i < 10; i += 1) {
@@ -701,7 +711,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
     await plan(steps4(4, false), 3)
     await clock.settle()
     expect(toasts[toasts.length - 1], 'whole plan done').toBe('All 4 steps done.')
-    const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'AbovePrompt', props: bandProps() })
+    const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'AbovePrompt', props: bandProps(60) })
     expect(await bandSays(v, surface), 'held at 100%').toContain('100%')
     await clock.advance(19_000)
     expect(await v.find({ key: 'plan-band' }), 'still there before 20 s').toBeDefined()
@@ -916,10 +926,10 @@ for (const surface of ALL) {
       expect(await allText(v as never), `count at ${cols}`).toContain('Tasks 2/4')
       expect(await v.find({ type: 'Text', text: /^Now: Build the slides$/ }), `step line at ${cols}`).toBeDefined()
       if (surface === 'terminal') {
-        const l = bandLayout(cols, 'Make the deck'.length, 'Tasks 2/4'.length, '50%'.length)
+        const l = bandLayout(cols - 2, 'Make the deck'.length, 'Tasks 2/4'.length, '50%'.length)
         const glyphs = ((await v.find({ key: 'plan-bar' })) as { text: string } | undefined)?.text ?? ''
         expect(glyphs.length, `bar glyphs at ${cols} columns`).toBe(l.barW)
-        expect(/^[━╸]*$/.test(glyphs), 'one slim line, no blocks').toBe(true)
+        expect(/^[━╸─]*$/.test(glyphs), 'one slim line, no blocks').toBe(true)
         expect(await v.find({ type: 'Svg' }), 'the terminal has no Svg').toBeUndefined()
         expect(await v.find({ text: /^50%$/ }) !== undefined, `percent shown only where it fits (${cols})`).toBe(l.showPct)
       }
@@ -955,12 +965,12 @@ for (const surface of ALL) {
     await clock.advance(2_100)
     for (const cols of [140, 80, 50, 32]) {
       const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props(cols) })
-      expect(await v.find({ type: 'Text', text: /^2 subagents$/ }), `heading at ${cols}`).toBeDefined()
+      expect(await v.find({ type: 'Text', text: /^2 subagents in this chat$/ }), `heading at ${cols}`).toBeDefined()
       expect(await v.find({ key: 'card-agent-a1' }), `running card at ${cols}`).toBeDefined()
       expect(await v.find({ key: 'card-agent-a2' }), `finished card at ${cols}`).toBeDefined()
       const card = (await v.find({ key: 'card-agent-a1' })) as { props: { width?: number } }
       expect(card.props.width, `card is the pane's width at ${cols}`).toBe(Math.max(32, cols))
-      const pet = surface === 'terminal' ? await v.find({ text: /▐▛███▜▌/ }) : await v.find({ type: 'Svg' })
+      const pet = surface === 'terminal' ? await v.find({ text: /▟▛█▜▙/ }) : await v.find({ type: 'Svg' })
       expect(pet, `pet: glyphs in the terminal, Svg elsewhere (${cols})`).toBeDefined()
       if (surface === 'terminal') expect(await v.find({ type: 'Svg' }), 'no Svg in the terminal').toBeUndefined()
       await v.press({ key: 'steps-agent-a1' })
@@ -1008,7 +1018,7 @@ test('every ui.open asks the dock for 48 columns', { timeoutMs: 30000 }, async (
 })
 
 for (const surface of ['terminal', 'desktop'] as const) {
-  test(`the header is one line at 48 columns (${surface}): title, three stats and Hide; the stats wrap only when too narrow`, { timeoutMs: 30000 }, async ($, on) => {
+  test(`the header at 48 columns (${surface}): title and Hide on the first line, the labelled stats wrap to a second`, { timeoutMs: 30000 }, async ($, on) => {
     const { clock } = rig(on, {})
     await $.session.start({ source: 'startup', cwd: '/home/test/work', surface, isInteractive: true } as never)
     await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'Explore' } as never)
@@ -1017,7 +1027,11 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await clock.settle()
     const wide = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props(48) })
     for (const key of ['stat-cost', 'stat-tokens', 'stat-time']) expect(await wide.find({ key }), `${key} on the header line`).toBeDefined()
-    expect(await wide.find({ key: 'stats' }), 'no second line at 48').toBeUndefined()
+    expect(await wide.find({ key: 'stats' }), 'the long title pushes the stats to a second line at 48').toBeDefined()
+    expect(await wide.find({ type: 'Text', text: /^ subagent tok$/ }), 'stat label').toBeDefined()
+    expect(await wide.find({ type: 'Text', text: /^ chat cost$/ }), 'stat label').toBeDefined()
+    expect(await wide.find({ type: 'Text', text: /^ time$/ }), 'stat label').toBeDefined()
+    expect(await wide.find({ text: 'By model' }), 'dim heading over the model rows').toBeDefined()
     expect(await wide.find({ key: 'hide' }), 'Hide stays').toBeDefined()
     expect(await wide.find({ text: /^\$0\.42$/ }), 'the value').toBeDefined()
     await wide.unmount()
@@ -1043,7 +1057,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
-test('terminal: a running card is 4 rows, a finished or stopped one 3, and Clawd is the 9 by 3 glyph art', { timeoutMs: 30000 }, async ($, on) => {
+test('terminal: a running card and a finished or stopped one are 4 rows, and Clawd is the 5 by 2 glyph art', { timeoutMs: 30000 }, async ($, on) => {
   const { clock } = rig(on, {})
   await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'terminal', isInteractive: true } as never)
   for (const [n, d] of [[1, 'One'], [2, 'Two'], [3, 'Three']] as const) await $.agent.spawn({ tool_use_id: `s${n}`, prompt: 'x', description: d, subagentType: 'Explore' } as never)
@@ -1054,19 +1068,19 @@ test('terminal: a running card is 4 rows, a finished or stopped one 3, and Clawd
   const v = await $.ui.mount({ plugin: 'mk-progress', surface: 'terminal', component: 'Pane', requestId: 'mk-progress', props: props(48) })
   const rows = async (id: string) => ((await v.find({ key: `rows-${id}` })) as { children: unknown[] }).children.flat().length
   expect(await rows('agent-a1'), 'running: name, meta, step, bar').toBe(4)
-  expect(await rows('agent-a2'), 'done: name, meta, bar').toBe(3)
-  expect(await rows('agent-a3'), 'stopped: name, meta, bar').toBe(3)
+  expect(await rows('agent-a2'), 'done: name, meta, Done line, bar').toBe(4)
+  expect(await rows('agent-a3'), 'stopped: name, meta, Stopped line, bar').toBe(4)
   // A finished crab stands in frame 0: Clawd as Claude Code draws it.
   for (const id of ['agent-a2', 'agent-a3']) {
-    const art = await Promise.all([0, 1, 2].map(async i => (await v.find({ key: `pet-${id}-r${i}` }))?.text))
-    expect(art, `Clawd, glyph for glyph (${id})`).toEqual([' ▐▛███▜▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '])
+    const art = await Promise.all([0, 1].map(async i => (await v.find({ key: `pet-${id}-r${i}` }))?.text))
+    expect(art, `Clawd, glyph for glyph (${id})`).toEqual(['▟▛█▜▙', ' ▘▘▝▝'])
   }
   // The pane holds no thick block bar, and the two done/stopped bars are full lines.
   expect(await v.find({ text: /[█]{6,}|░/ }), 'no thick bars').toBeUndefined()
   expect(await v.find({ type: 'Text', text: /^━+$/ }), 'a slim line').toBeDefined()
 })
 
-test('desktop: the Svg crab lives on an 18 by 6 pixel grid, differs between frames, and fills its eye holes', { timeoutMs: 30000 }, async ($, on) => {
+test('desktop: the Svg crab lives on a 10 by 4 pixel grid, differs between frames, and fills its eye holes', { timeoutMs: 30000 }, async ($, on) => {
   const { clock } = rig(on, {})
   await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'desktop', isInteractive: true } as never)
   await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'Explore' } as never)
@@ -1080,12 +1094,12 @@ test('desktop: the Svg crab lives on an 18 by 6 pixel grid, differs between fram
   }
   expect(sources.size, 'the four frames differ').toBe(4)
   for (const svg of sources) {
-    expect(svg).toContain('viewBox="0 0 18 6"')
+    expect(svg).toContain('viewBox="0 0 10 4"')
     expect(svg).toContain('shape-rendering="crispEdges"')
     const rects = [...svg.matchAll(/<rect (?:class="[^"]*" )?x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)"/g)].map(m => m.slice(1).map(Number) as [number, number, number, number])
     expect(rects.length > 0, 'pixels drawn').toBe(true)
-    for (const [x, y, w, h] of rects) expect(x >= 0 && y >= 0 && x + w <= 18 && y + h <= 6, `rect ${x},${y} ${w}x${h} inside the grid`).toBe(true)
-    expect(svg.includes('#2b1d16') === !svg.includes('x="3" y="0" width="12"') || true).toBe(true)
+    for (const [x, y, w, h] of rects) expect(x >= 0 && y >= 0 && x + w <= 10 && y + h <= 4, `rect ${x},${y} ${w}x${h} inside the grid`).toBe(true)
+    expect((svg.match(/fill="#2b1d16"/g) ?? []).length, 'two eye holes, or none when blinking').toBe(svg.includes('x="3" y="1" width="1" height="1" fill="#2b1d16"') ? 2 : 0)
   }
   const blink = [...sources].filter(s => !s.includes('#2b1d16'))
   expect(blink.length, 'only the blinking frame has no eyes').toBe(1)
@@ -1165,3 +1179,90 @@ test('every colour the pane and band draw holds 3:1 on white and on #1e1e1e', { 
     expect(contrast(c, '#1e1e1e') >= 3, c + ' on #1e1e1e: ' + contrast(c, '#1e1e1e').toFixed(2)).toBe(true)
   }
 })
+
+// ---------- 0.9.0: expandable plan, Tasks group in the pane, pet frames ----------
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`the task bar's ▸ unfolds the plan: done with its time, the step in progress, then the rest (${surface})`, { timeoutMs: 30000 }, async ($, on) => {
+    const { clock } = rig(on, {})
+    await $.session.start({ source: 'startup', cwd: '/home/test/work', surface, isInteractive: true } as never)
+    const callTool = $.tool.call as unknown as (input: unknown) => Promise<unknown>
+    await callTool({ tool: 'mcp__mk-progress__plan', tool_use_id: 'p1', title: 'Make the deck', steps: steps4(2, true) })
+    await clock.settle()
+    const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'AbovePrompt', props: bandProps(80) })
+    expect((await v.find({ key: 'plan-steps' }))?.text, 'collapsed arrow').toBe('▸')
+    expect(await v.find({ text: /^[✓◐○] / }), 'no step rows while collapsed').toBeUndefined()
+    await v.press({ key: 'plan-steps' })
+    expect((await v.find({ key: 'plan-steps' }))?.text, 'expanded arrow').toBe('▾')
+    const rows = (await v.findAll({ type: 'Text', text: /^[✓◐○] / })).map(t => ({ text: String(t.text), bold: t.props.bold, dim: t.props.dimColor, color: t.props.color }))
+    expect(rows.map(r => r.text.slice(0, 1)), 'done, done, in progress, pending').toEqual(['✓', '✓', '◐', '○'])
+    expect(rows[2]!.bold, 'in progress is bold').toBe(true)
+    expect(rows[2]!.color, 'in progress is purple').toBe('#8b5cf6')
+    expect(rows[0]!.dim, 'done is dim').toBe(true)
+    expect(rows[3]!.dim, 'pending is dim').toBe(true)
+    expect(await v.find({ text: /^\d\d:\d\d$/ }), 'the time a step was done').toBeDefined()
+    await v.press({ key: 'plan-steps' })
+    expect(await v.find({ text: /^[✓◐○] / }), 'folded again').toBeUndefined()
+  })
+
+  test(`the pane has a Tasks group: done folded into one toggle line, the step in progress, then pending (${surface})`, { timeoutMs: 30000 }, async ($, on) => {
+    const { clock } = rig(on, {})
+    await $.session.start({ source: 'startup', cwd: '/home/test/work', surface, isInteractive: true } as never)
+    const callTool = $.tool.call as unknown as (input: unknown) => Promise<unknown>
+    await callTool({ tool: 'mcp__mk-progress__plan', tool_use_id: 'p1', title: 'Make the deck', steps: steps4(2, true) })
+    await clock.settle()
+    const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props(48) })
+    expect(await v.find({ text: 'No subagents yet' }), 'the empty title still shows').toBeDefined()
+    expect(await v.find({ text: /^Tasks 2\/4 / }), 'group heading with the count').toBeDefined()
+    expect((await v.find({ key: 'group-tasks-done' }))?.text, 'done steps are one line').toBe('▸ ✓ 2 done')
+    expect(await v.find({ text: /^◐ / }), 'the step in progress').toBeDefined()
+    expect(await v.find({ text: /^○ / }), 'a pending step').toBeDefined()
+    expect(await v.find({ text: /^✓ / }), 'done steps hidden by default').toBeUndefined()
+    await v.press({ key: 'group-tasks-done' })
+    expect((await v.findAll({ type: 'Text', text: /^✓ / })).length, 'unfolded: both done steps').toBe(2)
+    await v.press({ key: 'group-tasks' })
+    expect(await v.find({ text: /^◐ / }), 'the whole group folds').toBeUndefined()
+  })
+}
+
+test('Clawd is 5 by 2 glyphs, four frames, and the Svg is a 10 by 4 grid with exactly two eye rects', { timeoutMs: 30000 }, async ($, on) => {
+  const { clock } = rig(on, {})
+  await $.session.start({ source: 'startup', cwd: '/home/test/work', surface: 'desktop', isInteractive: true } as never)
+  await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'Explore' } as never)
+  await $.agent.spawn({ tool_use_id: 's2', prompt: 'x', description: 'Two', subagentType: 'Explore' } as never)
+  await clock.settle()
+  await $.turn.complete({ answer: 'ok', agentId: 'agent-a2', reason: 'answer', durationMs: 1, isAborted: false, turnId: 't2' } as never)
+  await clock.settle()
+  const v = await $.ui.mount({ plugin: 'mk-progress', surface: 'desktop', component: 'Pane', requestId: 'mk-progress', props: props(48) })
+  const stand = String((await v.findAll({ type: 'Svg' })).filter(p => String(p.props.alt).startsWith('Claude crab')).at(-1)!.props.source)
+  expect(stand, 'viewBox 10 by 4').toContain('viewBox="0 0 10 4"')
+  expect((stand.match(/fill="#2b1d16"/g) ?? []).length, 'two eyes, not the claws').toBe(2)
+})
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`cards keep the type, say Step N and Done or Stopped, and carry a seat tag (${surface})`, { timeoutMs: 30000 }, async ($, on) => {
+    const { clock } = rig(on, {})
+    await $.session.start({ source: 'startup', cwd: '/home/test/work', surface, isInteractive: true } as never)
+    const callTool = $.tool.call as unknown as (input: unknown) => Promise<unknown>
+    await $.agent.spawn({ tool_use_id: 's1', prompt: 'x', description: 'One', subagentType: 'general-purpose', model: 'sonnet' } as never)
+    await $.agent.spawn({ tool_use_id: 's2', prompt: 'x', description: 'Two', subagentType: 'a-very-long-plugin-agent-type-name', model: 'sonnet' } as never)
+    await $.agent.spawn({ tool_use_id: 's3', prompt: 'x', description: 'Three', subagentType: 'Explore', model: 'sonnet' } as never)
+    await clock.settle()
+    await callTool({ tool: 'Read', tool_use_id: 'c1', file_path: '/home/test/work/notes.md', agentId: 'agent-a1' } as never)
+    await $.turn.complete({ answer: 'ok', agentId: 'agent-a2', reason: 'answer', durationMs: 1, isAborted: false, turnId: 't2', usage: { input_tokens: 1000, output_tokens: 500, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, model: 'claude-sonnet-5-5' } } as never)
+    await $.turn.complete({ answer: 'no', agentId: 'agent-a3', reason: 'error', durationMs: 1, isAborted: false, turnId: 't3' } as never)
+    await clock.settle()
+    const v = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props(48) })
+    expect(await v.find({ text: /^Step 1 · $/ }), 'running: the word Step and its number').toBeDefined()
+    expect(await v.find({ text: /^Done · 0 steps$/ }), 'finished tail').toBeDefined()
+    expect(await v.find({ text: /^Stopped before it finished · 0 steps$/ }), 'failed tail').toBeDefined()
+    expect((await v.find({ type: 'Text', text: /^Stopped before it finished/ }))?.props.color, 'failed tail is red').toBe('#dc2626')
+    expect(await v.find({ text: /^ · general-purpose$/ }), 'type of the running card').toBeDefined()
+    expect(await v.find({ text: /tok · a-very-long-plugin/ }), 'a long type is cut, never dropped, tokens beside it').toBeDefined()
+    for (const n of [1, 2, 3]) expect(await v.find({ text: `#${n}` }), `seat tag #${n}`).toBeDefined()
+    await v.unmount()
+    const narrow = await $.ui.mount({ plugin: 'mk-progress', surface, component: 'Pane', requestId: 'mk-progress', props: props(32) })
+    expect(await narrow.find({ text: /^Stopped · 0 steps$/ }), 'the short tail when narrow').toBeDefined()
+    expect(await narrow.find({ text: /^[0-9]+ subagents$/ }) !== undefined || (await narrow.find({ text: /^3 subagents in this chat$/ })) !== undefined, 'title present at 32').toBe(true)
+  })
+}

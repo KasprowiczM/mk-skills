@@ -18,6 +18,7 @@ const OFF = { plugin: 'mk-progress', key: 'off' } as const
 const HIDDEN = { plugin: 'mk-progress', key: 'hidden' } as const
 const PLAN = { plugin: 'mk-progress', key: 'plan' } as const
 const SHIM = { plugin: 'mk-progress', key: 'shimmer' } as const
+const PLAN_OPEN = { plugin: 'mk-progress', key: 'planOpen' } as const
 
 const TICK_MS = 300
 const POLL_MS = 2000
@@ -32,10 +33,12 @@ const MAX_STEPS = 200
 const TAG_W = 11
 // The pane asks the dock for this many body columns; the layout works at any width from 32 up.
 const PANE_COLS = 48
-// Columns the pet takes beside a card: Clawd is 9 wide, plus one gap. The Svg is 58 CSS pixels wide
+// Columns the pet takes beside a card: Clawd is 5 wide, plus one gap. The Svg is 32 CSS pixels wide
 // (about 6.5 a column) and 16 tall for each text row, so it reads like the terminal glyphs.
-const PET_W = 10
-const PET_PX_W = 58
+const PET_W = 6
+const PET_PX_W = 32
+// A collapsed card shows this many earlier steps under the current one.
+const HISTORY = 3
 const PET_PX_ROW = 16
 // A running pet changes frame every second tick: about every 600 ms.
 const FRAME_TICKS = 2
@@ -113,19 +116,19 @@ const EYE = '#2b1d16'
 const FRAMES = 4
 
 /**
- * Clawd as Claude Code draws it at start-up: quadrant block glyphs, 9 columns by 3 rows. The glyphs are the
- * single source: the terminal prints them, and the Svg decodes them into an 18 by 6 grid of pixels.
- * Row 0 is the head with its two eye holes, row 1 the body and little arms, row 2 the four legs.
+ * A small Clawd: quadrant block glyphs, 5 columns by 2 rows. The glyphs are the single source: the terminal
+ * prints them, and the Svg decodes them into a 10 by 4 grid of pixels. Row 0 is the claws and the head with
+ * its two eye holes (the ▛ and ▜ in columns 1 and 3), row 1 the little legs.
  * Frame 0 stands, 1 steps (legs apart), 2 blinks, 3 waves its claws.
  */
-const CLAWD: readonly (readonly [string, string, string])[] = [
-  [' ▐▛███▜▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '],
-  [' ▐▛███▜▌ ', '▝▜█████▛▘', ' ▘ ▘ ▝ ▝ '],
-  [' ▐█████▌ ', '▝▜█████▛▘', '  ▘▘ ▝▝  '],
-  ['▗▐▛███▜▌▖', ' ▜█████▛ ', '  ▘▘ ▝▝  '],
+const CLAWD: readonly (readonly [string, string])[] = [
+  ['▟▛█▜▙', ' ▘▘▝▝'],
+  ['▟▛█▜▙', '▘▘ ▝▝'],
+  ['▟███▙', ' ▘▘▝▝'],
+  ['█▛█▜█', ' ▘▘▝▝'],
 ]
 
-/** The three rows of a pet: a running one walks through the frames, a finished one stands in frame 0. */
+/** The two rows of a pet: a running one walks through the frames, a finished one stands in frame 0. */
 const petRows = (frame: number): string[] => [...CLAWD[((frame % FRAMES) + FRAMES) % FRAMES]!]
 
 // Which quarters of a cell a quadrant glyph fills: top left, top right, bottom left, bottom right.
@@ -148,7 +151,7 @@ const QUAD: Record<string, [number, number, number, number]> = {
 
 const petCache = new Map<string, string>()
 
-/** The pet as an Svg on an 18 by 6 pixel grid, built from the glyph rows. */
+/** The pet as an Svg on a 10 by 4 pixel grid, built from the glyph rows. */
 function petSvg(color: string, frame: number) {
   const key = `${color}:${frame % FRAMES}`
   const hit = petCache.get(key)
@@ -164,9 +167,9 @@ function petSvg(color: string, frame: number) {
       q.forEach((on, k) => {
         if (on) grid[r * 2 + (k >> 1)]![c * 2 + (k & 1)] = 1
       })
-      // The head row's holes are the eyes: ▛ leaves the bottom right quarter, ▜ the bottom left.
-      if (r === 0 && g === '▛') eyes.push([c * 2 + 1, 1])
-      if (r === 0 && g === '▜') eyes.push([c * 2, 1])
+      // The eyes are the holes of the two head cells beside the middle: ▛ leaves its bottom right quarter, ▜ its bottom left. Claws never count.
+      if (r === 0 && c === 1 && g === '▛') eyes.push([c * 2 + 1, 1])
+      if (r === 0 && c === row.length - 2 && g === '▜') eyes.push([c * 2, 1])
     })
   })
   const cls = `k${color.slice(1)}`
@@ -309,6 +312,13 @@ function describeRaw(tool: string, args: Record<string, unknown>): Step {
     default:
       return { kind: 'Tool', label: tool, dim: '', live: `Using ${tool}` }
   }
+}
+
+/** "14:05" in local time from an ISO timestamp; empty when there is none. */
+function hhmm(iso?: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 function clockTime(ms: number) {
@@ -782,7 +792,7 @@ async function writePlan($: EngineInterface) {
 
 async function drawPlan($: EngineInterface) {
   const value: BandPlan | null = plan
-    ? { title: plan.title, steps: plan.steps.map(st => ({ text: st.text, status: st.status })), shown: planShown }
+    ? { title: plan.title, steps: plan.steps.map(st => ({ text: st.text, status: st.status, ...(st.doneAt ? { doneAt: st.doneAt } : {}) })), shown: planShown }
     : null
   await $.state.set(PLAN, value)
   syncShimmer($)
@@ -996,7 +1006,8 @@ function cardBar(w: number, tick: number, seat: number): { before: string; cells
   const step = room ? phase % (2 * room) : 0
   const pos = step <= room ? step : 2 * room - step
   const cells = Array.from({ length: len }, (_, i) => (len >= 2 && i === 0 ? '╺' : len >= 2 && i === len - 1 ? '╸' : '━'))
-  return { before: '━'.repeat(pos), cells, after: '━'.repeat(w - pos - len), pulse: (tick + seat) % len }
+  // The track is the thin '─', the piece the heavy '━': working reads thin, done (a full '━' line) reads thick.
+  return { before: '─'.repeat(pos), cells, after: '─'.repeat(w - pos - len), pulse: (tick + seat) % len }
 }
 
 // ---------- Slim animated bars: SVG for the desktop ----------
@@ -1023,7 +1034,9 @@ function mix(a: string, b: string, t: number): string {
 }
 
 const BAND_H = 18
-const TRACK_H = 6
+// Done is drawn thick, working and still to do thin.
+const THICK_H = 8
+const THIN_H = 3
 
 /** The task bar above the prompt, one drawing: dot, title, slim purple gradient track, "Tasks 2/7", percent. */
 function bandSvg(p: BandPlan, W: number): string {
@@ -1037,7 +1050,8 @@ function bandSvg(p: BandPlan, W: number): string {
   const pctPx = 34
   const barX = Math.round(14 + textPx(title, 13) + 12)
   const barW = Math.max(60, W - barX - labelPx - pctPx - 16)
-  const y0 = (BAND_H - TRACK_H) / 2
+  const yK = (BAND_H - THICK_H) / 2
+  const yN = (BAND_H - THIN_H) / 2
   const fillW = Math.round(barW * ratio)
   // The step in progress glows softly from the fill to that step's end.
   const live = p.steps.some(st => st.status === 'in_progress')
@@ -1045,7 +1059,7 @@ function bandSvg(p: BandPlan, W: number): string {
   const ticks: string[] = []
   for (let i = 1; i < n; i++) {
     const x = Math.round((barW * i) / n)
-    if (x > fillW + 3) ticks.push(`<rect x="${x}" y="0" width="1" height="${TRACK_H}"/>`)
+    if (x > fillW + 3) ticks.push(`<rect x="${x}" y="${yN - 1.5}" width="1" height="${THIN_H + 3}"/>`)
   }
   const finished = n > 0 && done === n
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${BAND_H}" viewBox="0 0 ${W} ${BAND_H}">
@@ -1054,26 +1068,26 @@ function bandSvg(p: BandPlan, W: number): string {
 .g0{stop-color:${P_SVG.light[0]}}.g1{stop-color:${P_SVG.light[1]}}.g2{stop-color:${P_SVG.light[2]}}.lv{fill:${P_SVG.light[1]}}
 @media (prefers-color-scheme: dark){.tt{fill:#ececec}.pc{fill:#a3a3a3}.lb{fill:${P_SVG.dark[0]}}.dt{fill:${P_SVG.dark[0]}}.k{fill:#2a2640}.tk{fill:#4c4470}
 .g0{stop-color:${P_SVG.dark[0]}}.g1{stop-color:${P_SVG.dark[1]}}.g2{stop-color:${P_SVG.dark[2]}}.lv{fill:${P_SVG.dark[1]}}}
-.lv{animation:gl 1.2s ease-in-out infinite}@keyframes gl{0%,100%{opacity:.25}50%{opacity:.75}}
+.lv{animation:gl 1.2s ease-in-out infinite}@keyframes gl{0%,100%{opacity:.55}50%{opacity:1}}
 .sh{animation:sw 1.8s linear infinite}@keyframes sw{from{transform:translateX(-40px)}to{transform:translateX(${fillW}px)}}
-.lw{animation:lw 1.4s linear infinite}@keyframes lw{from{transform:translateX(-30px)}to{transform:translateX(${Math.max(liveW, 0)}px)}}
+.lw{animation:lw 1s linear infinite}@keyframes lw{from{transform:translateX(-30px)}to{transform:translateX(${Math.max(liveW, 0)}px)}}
 @media (prefers-reduced-motion: reduce){.lv,.sh,.lw{animation:none}}
 </style>
 <defs>
 <linearGradient id="hdb-g" x1="0" x2="1"><stop class="g0" offset="0" stop-color="${P_SVG.light[0]}"/><stop class="g1" offset=".55" stop-color="${P_SVG.light[1]}"/><stop class="g2" offset="1" stop-color="${P_SVG.light[2]}"/></linearGradient>
+<linearGradient id="hdb-w" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
 <linearGradient id="hdb-s" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-<clipPath id="hdb-c"><rect width="${barW}" height="${TRACK_H}" rx="${TRACK_H / 2}"/></clipPath>
-<clipPath id="hdb-f"><rect width="${fillW}" height="${TRACK_H}"/></clipPath>
-<clipPath id="hdb-l"><rect x="${fillW}" width="${Math.max(liveW, 0)}" height="${TRACK_H}"/></clipPath>
+<clipPath id="hdb-f"><rect y="${yK}" width="${fillW}" height="${THICK_H}" rx="${THICK_H / 2}"/></clipPath>
+<clipPath id="hdb-l"><rect x="${fillW}" y="${yN}" width="${Math.max(liveW, 0)}" height="${THIN_H}"/></clipPath>
 </defs>
 <circle class="dt" cx="5" cy="${BAND_H / 2}" r="4" fill="${P_SVG.light[2]}"/>
 <text class="tt" x="14" y="${BAND_H / 2 + 4.5}" font-family="${FONT}" font-size="13" font-weight="600">${xml(title)}</text>
-<g transform="translate(${barX},${y0})">
-<rect class="k" width="${barW}" height="${TRACK_H}" rx="${TRACK_H / 2}"/>
-<g clip-path="url(#hdb-c)">
-${liveW > 0 ? `<rect class="lv" x="${fillW}" width="${liveW}" height="${TRACK_H}" fill="${P_SVG.light[1]}"/><g clip-path="url(#hdb-l)"><rect class="lw" x="${fillW}" width="30" height="${TRACK_H}" fill="url(#hdb-s)"/></g>` : ''}
-${fillW > 0 ? `<rect width="${fillW}" height="${TRACK_H}" fill="url(#hdb-g)"/>` : ''}
-${fillW > 0 && !finished ? `<g clip-path="url(#hdb-f)"><rect class="sh" width="40" height="${TRACK_H}" fill="url(#hdb-s)"/></g>` : ''}
+<g transform="translate(${barX},0)">
+<rect class="k" y="${yN}" width="${barW}" height="${THIN_H}" rx="${THIN_H / 2}"/>
+<g>
+${liveW > 0 ? `<rect class="lv" x="${fillW}" y="${yN}" width="${liveW}" height="${THIN_H}" rx="${THIN_H / 2}" fill="${P_SVG.light[1]}"/><g clip-path="url(#hdb-l)"><rect class="lw" x="${fillW}" y="${yN}" width="30" height="${THIN_H}" fill="url(#hdb-w)"/></g>` : ''}
+${fillW > 0 ? `<rect y="${yK}" width="${fillW}" height="${THICK_H}" rx="${THICK_H / 2}" fill="url(#hdb-g)"/>` : ''}
+${fillW > 0 && !finished ? `<g clip-path="url(#hdb-f)"><rect class="sh" y="${yK}" width="40" height="${THICK_H}" fill="url(#hdb-s)"/></g>` : ''}
 <g class="tk">${ticks.join('')}</g>
 </g>
 </g>
@@ -1082,7 +1096,10 @@ ${fillW > 0 && !finished ? `<g clip-path="url(#hdb-f)"><rect class="sh" width="4
 </svg>`
 }
 
-const CARD_BAR_H = 4
+// Working is a thin 2 px track with a 4 px piece gliding on it; done and stopped are one solid 6 px line.
+const CARD_BAR_H = 6
+const CARD_THIN_H = 2
+const CARD_PIECE_H = 4
 
 /**
  * The slim bar of a subagent card. While it works its length is not known, so a rounded piece in the helper's
@@ -1097,7 +1114,7 @@ function cardBarSvg(phase: HelperPhase, color: string, W: number, seat: number):
   const glow = Math.min(10, piece - 4)
   const working = phase === 'working'
   const body = working
-    ? `<g class="mv${seat}"><rect class="fc${seat}" width="${piece}" height="${H}" rx="${H / 2}" fill="${fill}"/><rect class="gl${seat}" x="2" width="${glow}" height="${H}" rx="${H / 2}" fill="#ffffff" opacity=".55"/></g>`
+    ? `<g class="mv${seat}"><rect class="fc${seat}" y="${(H - CARD_PIECE_H) / 2}" width="${piece}" height="${CARD_PIECE_H}" rx="${CARD_PIECE_H / 2}" fill="${fill}"/><rect class="gl${seat}" x="2" y="${(H - CARD_PIECE_H) / 2}" width="${glow}" height="${CARD_PIECE_H}" rx="${CARD_PIECE_H / 2}" fill="#ffffff" opacity=".8"/></g>`
     : `<rect width="${W}" height="${H}" rx="${H / 2}" fill="${fill}"/>`
   const delay = ((seat * 0.4) % 1.6).toFixed(2)
   const style = working
@@ -1114,7 +1131,7 @@ function cardBarSvg(phase: HelperPhase, color: string, W: number, seat: number):
 ${style}
 <defs><clipPath id="${id}-c"><rect width="${W}" height="${H}" rx="${H / 2}"/></clipPath></defs>
 <g clip-path="url(#${id}-c)">
-<rect ${working ? `class="fc${seat}" ` : ''}width="${W}" height="${H}" rx="${H / 2}" fill="${fill}" opacity=".22"/>
+${working ? `<rect class="fc${seat}" y="${(H - CARD_THIN_H) / 2}" width="${W}" height="${CARD_THIN_H}" rx="${CARD_THIN_H / 2}" fill="${fill}" opacity=".3"/>` : ''}
 ${body}
 </g>
 </svg>`
@@ -1188,6 +1205,13 @@ export const register: Register = on => {
     } catch {
       // The toast is only a hint.
     }
+    return { element: e.element }
+  })
+
+  // ▸ / ▾ on the task bar unfolds the plan's steps under the bar.
+  on('ui.press', { plugin: NAME, element: 'plan-steps' }, async ($, e) => {
+    const { value: open = false } = await $.state.get(PLAN_OPEN)
+    await $.state.set(PLAN_OPEN, !open)
     return { element: e.element }
   })
 
@@ -1325,14 +1349,17 @@ export const register: Register = on => {
 
     // Header stats: only numbers the engine gave.
     const stats: { key: string; value: string; label: string }[] = []
-    if (cost.usd !== null) stats.push({ key: 'stat-cost', value: `$${cost.usd.toFixed(2)}`, label: 'chat' })
-    if (list.some(hp => hp.hasUsage)) stats.push({ key: 'stat-tokens', value: tokenText(list.reduce((n, hp) => n + hp.tokens + hp.turnTokens, 0)), label: 'tok' })
+    if (cost.usd !== null) stats.push({ key: 'stat-cost', value: `$${cost.usd.toFixed(2)}`, label: 'chat cost' })
+    if (list.some(hp => hp.hasUsage)) stats.push({ key: 'stat-tokens', value: tokenText(list.reduce((n, hp) => n + hp.tokens + hp.turnTokens, 0)), label: 'subagent tok' })
     if (list.length) {
       const start = Math.min(...list.map(hp => hp.startedAt))
       const end = running.length ? Math.max(clk.now, ...running.map(hp => hp.startedAt)) : Math.max(...list.map(hp => hp.endedAt))
       stats.push({ key: 'stat-time', value: clockTime(end - start), label: 'time' })
     }
-    const title = list.length ? `${list.length} subagent${list.length === 1 ? '' : 's'}` : 'No subagents yet'
+    const short = `${list.length} subagent${list.length === 1 ? '' : 's'}`
+    // "N subagents in this chat"; the short form only when the pane is too narrow for it and Hide.
+    const longTitle = `${short} in this chat`
+    const title = list.length ? (longTitle.length + 1 + 4 <= width ? longTitle : short) : 'No subagents yet'
     const statsLen = stats.reduce((n, st, i) => n + st.value.length + 1 + st.label.length + (i ? 3 : 0), 0)
     // The title, the stats and Hide on one line; the stats drop to a second only when they do not fit.
     const inline = title.length + 1 + statsLen + 1 + 4 <= width
@@ -1360,10 +1387,13 @@ export const register: Register = on => {
     const pet = (hp: Helper) => {
       const color = modelColor(hp.model)
       const frame = frameOf(hp)
+      // A small dim "#1" under the crab tells two cards on the same model apart.
+      const seatTag = <Text key={`seat-${hp.id}`} dimColor>{`#${hp.seat + 1}`}</Text>
       if (Svg) {
         return (
-          <Box key={`pet-${hp.id}`} width={PET_W} flexShrink={0}>
-            <Svg source={petSvg(color, frame)} alt={`Claude crab, ${familyName(hp.model)}`} width={PET_PX_W} height={3 * PET_PX_ROW} />
+          <Box key={`pet-${hp.id}`} width={PET_W} flexShrink={0} flexDirection="column">
+            <Svg source={petSvg(color, frame)} alt={`Claude crab, ${familyName(hp.model)}`} width={PET_PX_W} height={CLAWD[0]!.length * PET_PX_ROW} />
+            {seatTag}
           </Box>
         )
       }
@@ -1374,21 +1404,20 @@ export const register: Register = on => {
               <Text color={color}>{row}</Text>
             </Box>
           ))}
+          {seatTag}
         </Box>
       )
     }
 
-    /** The model with its effort ("opus·high") and the rest of the meta line (" · general-purpose · 2.7M tok") in `room` columns; the type gives way first. */
+    /** The model with its effort ("opus·high"), then " · 34k tok", then the type, in `room` columns. The type is never dropped: the tokens give way to it, and it is cut before it goes. */
     const whoLine = (hp: Helper, room: number): [string, string] => {
       const family = hp.model ? familyOf(hp.model) : 'inherit'
       const model = cut(hp.effort ? `${family}·${hp.effort}` : family, Math.max(4, room))
-      const tok = hp.hasUsage ? `${tokenText(hp.tokens + hp.turnTokens)} tok` : ''
-      const typeRoom = room - model.length - (tok ? tok.length + 3 : 0) - 3
-      const type = hp.type && typeRoom >= 4 ? cut(hp.type, typeRoom) : ''
-      const join = (parts: string[]) => parts.filter(Boolean).map(x => ` · ${x}`).join('')
-      // Whole pieces only: the type is cut first, then dropped, then the tokens; nothing is cut mid-number.
-      const rest = [join([type, tok]), join([tok]), ''].find(r => model.length + r.length <= room) ?? ''
-      return [model, rest]
+      const tok = hp.hasUsage ? ` · ${tokenText(hp.tokens + hp.turnTokens)} tok` : ''
+      const typeRoom = room - model.length - tok.length - 3
+      if (!hp.type) return [model, tok]
+      if (typeRoom >= Math.min(hp.type.length, 6)) return [model, `${tok} · ${cut(hp.type, typeRoom)}`]
+      return [model, ` · ${cut(hp.type, Math.max(3, room - model.length - 3))}`]
     }
 
     const card = (hp: Helper) => {
@@ -1403,8 +1432,15 @@ export const register: Register = on => {
       const spin = SPIN[clk.tick % SPIN.length]!
       const nSteps = `${hp.count} step${hp.count === 1 ? '' : 's'}`
       const hasSteps = hp.steps.length > 0
-      // A running card's toggle carries the step count: "▸ 116"; a finished one is just the arrow.
-      const toggleText = `${isOpen ? '▾' : '▸'}${live ? ` ${hp.count}` : ''}`
+      const toggleText = isOpen ? '▾ hide steps' : `▸ all ${hp.count} step${hp.count === 1 ? '' : 's'}`
+      // The collapsed card keeps the last few earlier steps as dim lines: the ones before the current step while it runs, the last ones once it is over.
+      const history = isOpen
+        ? []
+        : (live ? hp.steps.slice(0, -1) : hp.steps).slice(-HISTORY).map((st, i) => (
+            <Text key={`h-${hp.id}-${i}`} dimColor wrap="truncate-end">
+              {cut(`  ${st.live}`, cw)}
+            </Text>
+          ))
       const toggle = hasSteps ? (
         <Button key={`steps-${hp.id}`} plain dimColor onPress={() => undefined}>
           {toggleText}
@@ -1412,7 +1448,6 @@ export const register: Register = on => {
       ) : null
       const toggleW = hasSteps ? toggleText.length : 0
       const rowW = cw - TAG_W
-      const tail = live ? '' : failed ? `stopped · ${nSteps}` : nSteps
       // The thin bar fills the last row beside the toggle. About 6.5 CSS pixels a column, as the pet's 58 pixels fill its 9.
       const barCols = Math.max(4, cw - (toggleW ? toggleW + 1 : 0))
       const barPx = Math.floor(barCols * 6.5)
@@ -1435,7 +1470,7 @@ export const register: Register = on => {
         </Box>
       )
       const barRow = (
-        <Box key={`r${live ? 4 : 3}-${hp.id}`} flexDirection="row" alignItems="center" gap={1} width={cw}>
+        <Box key={`r4-${hp.id}`} flexDirection="row" alignItems="center" gap={1} width={cw}>
           {Svg ? (
             <Box key={`bar-${hp.id}`} width={barCols}>
               <Svg source={cardBarSvg(hp.phase, hue.color, barPx, hp.seat)} alt={live ? 'Working' : failed ? 'Stopped' : 'Done'} width={barPx} height={CARD_BAR_H} />
@@ -1463,42 +1498,53 @@ export const register: Register = on => {
         </Box>
       )
 
+      const [who, whoRest] = whoLine(hp, cw)
+      const whoRow = (
+        <Text key={`r2-${hp.id}`} wrap="truncate-end">
+          <Text bold color={hue.color}>
+            {who}
+          </Text>
+          <Text dimColor>{whoRest}</Text>
+        </Text>
+      )
       let rows: unknown[]
       if (live) {
-        const stepW = Math.max(4, cw - 2 - String(hp.count).length - 1)
+        // "◐ Step 116 · Reading notes.md": the spinner, the step number, then the live text.
+        const stepLead = `Step ${hp.count} · `
+        const stepW = Math.max(4, cw - 2 - stepLead.length)
         rows = [
           head,
-          <Text key={`r2-${hp.id}`} wrap="truncate-end">
-            <Text bold color={hue.color}>
-              {whoLine(hp, cw)[0]}
-            </Text>
-            <Text dimColor>{whoLine(hp, cw)[1]}</Text>
-          </Text>,
+          whoRow,
           <Box key={`r3-${hp.id}`} flexDirection="row" width={cw}>
             <Text color={ACCENT}>{`${spin} `}</Text>
-            <Text dimColor>{`${hp.count} `}</Text>
+            <Text dimColor>{stepLead}</Text>
             <Box width={stepW}>
               <Text bold color={ACCENT} wrap="truncate-end">
                 {cut(current?.live ?? 'Getting started', stepW)}
               </Text>
             </Box>
           </Box>,
+          ...history,
           barRow,
         ]
       } else {
+        // "✓ Done · 12 steps" or "✗ Stopped before it finished · 12 steps" ("✗ Stopped · 12 steps" when that does not fit).
+        const doneText = failed ? `Stopped before it finished · ${nSteps}` : `Done · ${nSteps}`
+        const doneFit = failed && doneText.length + 2 > cw ? `Stopped · ${nSteps}` : doneText
         rows = [
           head,
-          <Box key={`r2-${hp.id}`} flexDirection="row" width={cw}>
-            <Text bold color={hue.color} wrap="truncate-end">
-              {whoLine(hp, Math.max(4, cw - tail.length - 3))[0]}
+          whoRow,
+          <Box key={`r3-${hp.id}`} flexDirection="row" width={cw}>
+            <Text bold color={markColor}>
+              {`${mark} `}
             </Text>
-            <Text dimColor wrap="truncate-end">
-              {whoLine(hp, Math.max(4, cw - tail.length - 3))[1]}
-            </Text>
-            <Text dimColor={!failed} color={failed ? BAD : undefined}>
-              {` · ${tail}`}
-            </Text>
+            <Box width={Math.max(4, cw - 2)}>
+              <Text dimColor={!failed} color={failed ? BAD : undefined} wrap="truncate-end">
+                {cut(doneFit, Math.max(4, cw - 2))}
+              </Text>
+            </Box>
           </Box>,
+          ...history,
           barRow,
         ]
       }
@@ -1538,10 +1584,10 @@ export const register: Register = on => {
     }
 
     // A heading per group: one slim line in the group's colour, arrow and title in bold, a heavy rule to the edge.
-    const group = (id: string, name: string, members: Helper[], color: string) => {
-      if (!members.length) return null
+    const group = (id: string, name: string, count: string | number, color: string, body: () => unknown, show = true) => {
+      if (!show) return null
       const folded = view.folded.includes(id)
-      const label = `${name} ${members.length} `
+      const label = `${name} ${count} `
       return (
         <Box key={`grp-${id}`} flexDirection="column" width={width}>
           <Box key={`head-${id}`} flexDirection="row" width={width}>
@@ -1557,10 +1603,43 @@ export const register: Register = on => {
               {'━'.repeat(Math.max(2, width - 2 - label.length))}
             </Text>
           </Box>
-          {folded ? null : members.map(card)}
+          {folded ? null : (body() as never)}
         </Box>
       )
     }
+
+    // The plan, when it has steps (shown or not). Done steps fold into one line that is itself a toggle:
+    // the folded list holds ids the viewer flipped away from their default, and "tasks-done" is collapsed
+    // by default, so having "tasks-done" in it means the done steps are listed.
+    const { value: bp0 = null } = await $.state.get(PLAN)
+    const bp = bp0 && bp0.steps.length ? bp0 : null
+    const tDone = bp ? bp.steps.filter(st => st.status === 'completed') : []
+    const doneOpen = view.folded.includes('tasks-done')
+    const taskLine = (st: BandPlan['steps'][number], key: string) => {
+      const mark = st.status === 'completed' ? '✓' : st.status === 'in_progress' ? '◐' : '○'
+      return (
+        <Text key={key} wrap="truncate-end" bold={st.status === 'in_progress'} dimColor={st.status !== 'in_progress'} color={st.status === 'completed' ? GOOD : st.status === 'in_progress' ? P_MID : undefined}>
+          {cut(`${mark} ${st.text}`, width)}
+        </Text>
+      )
+    }
+    const tasksBody = () => (
+      <Box flexDirection="column" width={width}>
+        {tDone.length ? (
+          <Box key="tasks-done" flexDirection="column" width={width}>
+            <Box flexDirection="row">
+              <Button key="group-tasks-done" plain onPress={() => undefined}>
+                <Text color={GOOD} dimColor>
+                  {`${doneOpen ? '▾' : '▸'} ✓ ${tDone.length} done`}
+                </Text>
+              </Button>
+            </Box>
+            {doneOpen ? tDone.map((st, i) => taskLine(st, `td-${i}`)) : null}
+          </Box>
+        ) : null}
+        {(bp?.steps ?? []).filter(st => st.status !== 'completed').map((st, i) => taskLine(st, `tp-${i}`))}
+      </Box>
+    )
 
     const titleText = (
       <Text bold color={running.length ? ACCENT : list.length ? GOOD : undefined}>
@@ -1569,7 +1648,10 @@ export const register: Register = on => {
     )
     const showCaveat = byModel.some(m => m.usd !== null)
     const modelRows = byModel.map(m => {
-      const right = [m.tokens > 0 ? `${tokenText(m.tokens)} tok` : '', m.usd !== null ? `~$${m.usd.toFixed(2)}` : ''].filter(Boolean).join(' · ')
+      const usd = m.usd !== null ? `~$${m.usd.toFixed(2)}` : ''
+      const mk = (unit: string) => [m.tokens > 0 ? `${tokenText(m.tokens)} ${unit}` : '', usd].filter(Boolean).join(' · ')
+      // "tokens" in full when the row has room for it, else "tok".
+      const right = 2 + m.model.length + 1 + mk('tokens').length <= width ? mk('tokens') : mk('tok')
       return (
         <Box key={`model-${m.model}`} flexDirection="row" justifyContent="space-between" width={width}>
           <Box flexDirection="row" gap={1}>
@@ -1606,6 +1688,9 @@ export const register: Register = on => {
         </Box>
         {byModel.length ? (
           <Box key="models" flexDirection="column" width={width}>
+            <Text key="models-head" dimColor>
+              By model
+            </Text>
             {modelRows}
             <Box key="models-rule" width={width}>
               <Text dimColor wrap="truncate-end">
@@ -1614,10 +1699,11 @@ export const register: Register = on => {
             </Box>
           </Box>
         ) : null}
+        {group('tasks', 'Tasks', `${tDone.length}/${bp?.steps.length ?? 0}`, P_MID, tasksBody, !!bp)}
         {list.length ? null : <Text dimColor>Cards show up here when Claude starts a subagent.</Text>}
-        {group('running', 'Running', running, GOOD)}
-        {group('finished', 'Finished', finished, WARN)}
-        {group('stopped', 'Stopped', stopped, BAD)}
+        {group('running', 'Running', running.length, GOOD, () => running.map(card), running.length > 0)}
+        {group('finished', 'Finished', finished.length, WARN, () => finished.map(card), finished.length > 0)}
+        {group('stopped', 'Stopped', stopped.length, BAD, () => stopped.map(card), stopped.length > 0)}
       </Box>
     )
   })
@@ -1628,6 +1714,7 @@ export const register: Register = on => {
     const { value: isOff = false } = await $.state.get(OFF)
     const { value: isHidden = false } = await $.state.get(HIDDEN)
     const { value: p = null } = await $.state.get(PLAN)
+    const { value: planOpen = false } = await $.state.get(PLAN_OPEN)
     if (isOff || isHidden || hidden || !p || !p.shown || !p.steps.length) return next(e)
     // The other mods' bands draw above this one. Claude Code's own placeholder is never nested.
     const drawn = await Promise.resolve(next(e)).catch(() => null)
@@ -1642,6 +1729,11 @@ export const register: Register = on => {
     const now = p.steps.find(st => st.status === 'in_progress')
     const nextUp = p.steps.find(st => st.status === 'pending')
     const line = now ? `Now: ${now.text}` : done === n ? 'All steps done' : nextUp ? `Next: ${nextUp.text}` : ''
+    const toggle = (
+      <Button key="plan-steps" plain dimColor onPress={() => undefined}>
+        {planOpen ? '▾' : '▸'}
+      </Button>
+    )
     const dismiss = <Button key="plan-dismiss" label="✕" plain dimColor role="dismiss" onPress={() => undefined} />
 
     let row: unknown
@@ -1649,11 +1741,12 @@ export const register: Register = on => {
     if (e.surface !== 'terminal' && 'Svg' in els) {
       const { Svg } = els
       // About 8 CSS pixels a column; the rest is the dismiss button and its gap.
-      const px = Math.max(180, Math.min(1600, (cols || 100) * 8 - 56))
+      const px = Math.max(180, Math.min(1600, (cols || 100) * 8 - 76))
       w = cols || BAR_FALLBACK
       row = (
         <Box key="plan-row" flexDirection="row" alignItems="center" gap={1}>
           <Svg key="plan-svg" source={bandSvg(p, px)} alt={`${p.title}: ${label}, ${pct}`} width={px} height={BAND_H} />
+          {toggle}
           {dismiss}
         </Box>
       )
@@ -1662,7 +1755,7 @@ export const register: Register = on => {
       // the step in progress shimmering, a bright pulse running along the fill, count, percent.
       const { value: tick = 0 } = await $.state.get(SHIM)
       w = cols || BAR_FALLBACK
-      const { titleW, barW, showTitle, showPct } = bandLayout(w, p.title.length, label.length, pct.length)
+      const { titleW, barW, showTitle, showPct } = bandLayout(w - 2, p.title.length, label.length, pct.length)
       // Half cells, so the fill moves in half steps: a half cap '╸' ends it mid-cell.
       const total = barW * 2
       let halves = Math.round((done / n) * total)
@@ -1697,20 +1790,39 @@ export const register: Register = on => {
               ))}
               {cap ? <Text color={P_DEEP}>╸</Text> : null}
               {Array.from({ length: liveC }, (_, i) => (
-                <Text key={`l-${i}`} color={(i + tick) % 3 === 0 ? P_LIGHT : P_MID}>
-                  ━
+                <Text key={`l-${i}`} color={(i - (tick % (liveC + 2)) + 2 + liveC + 2) % (liveC + 2) < 2 ? PULSE : P_MID}>
+                  ─
                 </Text>
               ))}
-              <Text dimColor>{'━'.repeat(Math.max(0, barW - used - liveC))}</Text>
+              <Text dimColor>{'─'.repeat(Math.max(0, barW - used - liveC))}</Text>
             </Text>
             </Box>
           ) : null}
           <Text bold color={P_MID}>{label}</Text>
           {showPct ? <Text dimColor>{pct}</Text> : null}
+          {toggle}
           {dismiss}
         </Box>
       )
     }
+    // Expanded: one line per step. Done in dim green with the time it was done, the one in progress bold purple, the rest dim.
+    const stepRows = planOpen
+      ? p.steps.map((st, i) => {
+          const t = st.status === 'completed' ? hhmm(st.doneAt) : ''
+          const tw = Math.max(4, w - (t ? t.length + 1 : 0))
+          const mark = st.status === 'completed' ? '✓' : st.status === 'in_progress' ? '◐' : '○'
+          return (
+            <Box key={`plan-step-${i}`} flexDirection="row" justifyContent="space-between" width={w}>
+              <Box width={tw}>
+                <Text wrap="truncate-end" bold={st.status === 'in_progress'} dimColor={st.status !== 'in_progress'} color={st.status === 'completed' ? GOOD : st.status === 'in_progress' ? P_MID : undefined}>
+                  {cut(`${mark} ${st.text}`, tw)}
+                </Text>
+              </Box>
+              {t ? <Text dimColor>{t}</Text> : null}
+            </Box>
+          )
+        })
+      : null
     return (
       <Box flexDirection="column">
         {rest as never}
@@ -1721,6 +1833,7 @@ export const register: Register = on => {
               {cut(line, w)}
             </Text>
           ) : null}
+          {stepRows as never}
         </Box>
       </Box>
     )

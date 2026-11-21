@@ -6,6 +6,11 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-21
+
+### Changed
+- mk-progress 0.9.0: half-size Clawd crab with a `#N` seat tag; step history on cards with an "all N steps" toggle; expandable plan list on the task bar and a "Tasks" group in the pane; thick line = done, thin line = working; 0.7.0 card and header labels restored.
+
 ## [0.5.0] - 2026-11-21
 
 ### Added
